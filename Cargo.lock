@@ -801,6 +801,7 @@ dependencies = [
  "parley",
  "slotmap",
  "taffy",
+ "vello",
 ]
 
 [[package]]
@@ -813,6 +814,7 @@ dependencies = [
  "js-sys",
  "log",
  "newdom-core",
+ "slotmap",
  "vello",
  "wasm-bindgen",
  "wasm-bindgen-futures",
