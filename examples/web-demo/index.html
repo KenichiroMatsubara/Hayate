@@ -3,411 +3,462 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NewDOM — web-demo</title>
+  <title>NewDOM Phase 0</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: #0f172a;
       color: #e2e8f0;
-      font-family: ui-monospace, 'Cascadia Code', 'Menlo', monospace;
+      font-family: ui-monospace, 'Cascadia Code', Menlo, monospace;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
-      padding: 32px 16px;
+      padding: 32px 16px 48px;
+      gap: 0;
     }
 
-    h1 {
-      font-size: 1.1rem;
+    /* ── HEADER ── */
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    header h1 {
+      font-size: 1rem;
       font-weight: 900;
-      letter-spacing: -0.02em;
       color: #f8fafc;
+      letter-spacing: -.02em;
+    }
+    header p {
+      font-size: .7rem;
+      color: #475569;
+      margin-top: 4px;
     }
 
-    /* ── capabilities grid ── */
-    .caps-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      width: 100%;
-      max-width: 720px;
-    }
-    .cap-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 16px;
+    /* ── STEP PIPELINE ── */
+    .pipeline {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: border-color 0.2s;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
     }
-    .cap-card .cap-title {
-      font-size: 0.7rem;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #94a3b8;
-    }
-    .cap-badge {
-      display: inline-flex;
+    .step {
+      display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.6rem;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      padding: 2px 8px;
+      padding: 5px 12px;
       border-radius: 999px;
-    }
-    .cap-badge.ok   { background: #052e16; color: #4ade80; border: 1px solid #166534; }
-    .cap-badge.ng   { background: #2d0a0a; color: #f87171; border: 1px solid #7f1d1d; }
-    .cap-badge.wait { background: #1e293b; color: #64748b; border: 1px solid #334155; }
-    .cap-detail {
-      font-size: 0.65rem;
-      color: #64748b;
-      word-break: break-all;
-      line-height: 1.4;
-    }
-    .cap-detail.highlight { color: #818cf8; }
-
-    /* ── preferred banner ── */
-    .preferred-banner {
-      width: 100%;
-      max-width: 720px;
-      background: #1e293b;
       border: 1px solid #334155;
-      border-radius: 20px;
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .preferred-banner .engine-name {
-      font-size: 2.2rem;
-      font-weight: 900;
-      letter-spacing: -0.04em;
-      font-style: italic;
-    }
-    .engine-name.webgpu  { color: #818cf8; }
-    .engine-name.webgl2  { color: #34d399; }
-    .engine-name.webgl   { color: #60a5fa; }
-    .engine-name.none    { color: #f87171; }
-    .preferred-banner .engine-hint {
-      font-size: 0.7rem;
+      background: #1e293b;
+      font-size: .65rem;
+      font-weight: 700;
       color: #64748b;
-      max-width: 340px;
+      white-space: nowrap;
+      transition: all .2s;
     }
+    .step .dot { width: 7px; height: 7px; border-radius: 50%; background: #334155; flex-shrink: 0; }
+    .step.ok   { color: #4ade80; border-color: #166534; background: #052e16; }
+    .step.ok .dot   { background: #4ade80; }
+    .step.run  { color: #818cf8; border-color: #3730a3; background: #1e1b4b; animation: pulse .9s ease-in-out infinite; }
+    .step.run .dot  { background: #818cf8; }
+    .step.fail { color: #f87171; border-color: #7f1d1d; background: #2d0a0a; }
+    .step.fail .dot { background: #f87171; }
+    @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
 
-    /* ── advice ── */
-    .advice {
-      width: 100%;
-      max-width: 720px;
-      background: #1e293b55;
-      border: 1px solid #33415588;
-      border-radius: 16px;
-      padding: 16px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    /* ── CANVAS AREA ── */
+    .canvas-wrap {
+      position: relative;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #020617;
     }
-    .advice p {
-      font-size: 0.75rem;
+    canvas { display: block; }
+    #canvas-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      background: #020617ee;
+      font-size: .85rem;
+      color: #64748b;
+      text-align: center;
+      padding: 24px;
+      transition: opacity .3s;
+    }
+    #canvas-overlay.gone { opacity: 0; pointer-events: none; }
+    #overlay-icon { font-size: 2rem; }
+    #overlay-msg  { font-weight: 700; }
+    #overlay-sub  { font-size: .7rem; color: #475569; max-width: 380px; line-height: 1.6; }
+
+    /* ── CONTROLS ── */
+    .controls {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .controls label {
+      font-size: .75rem;
       color: #94a3b8;
       display: flex;
+      align-items: center;
       gap: 8px;
-      line-height: 1.5;
     }
-    .advice p .dot { flex-shrink: 0; margin-top: 2px; }
-    .dot.amber  { color: #fbbf24; }
-    .dot.green  { color: #4ade80; }
-    .dot.muted  { color: #475569; }
-    .dot.red    { color: #f87171; }
-
-    /* ── renderer section ── */
-    #renderer-section {
-      width: 100%;
-      max-width: 720px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-    canvas {
-      border: 2px solid #334155;
-      border-radius: 8px;
-      display: block;
-    }
-    .controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .controls label { font-size: 0.8rem; color: #94a3b8; display: flex; align-items: center; gap: 8px; }
     input[type=color] {
-      width: 48px; height: 32px;
-      border: none; cursor: pointer; border-radius: 6px;
+      width: 44px; height: 30px;
+      border: 1px solid #334155; border-radius: 6px;
+      background: #1e293b; cursor: pointer; padding: 2px;
     }
     button {
-      padding: 6px 16px;
+      padding: 6px 18px;
+      border: 1px solid #334155;
       border-radius: 6px;
-      border: 1px solid #475569;
       background: #1e293b;
       color: #e2e8f0;
       font-family: inherit;
-      font-size: 0.8rem;
+      font-size: .75rem;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background .15s, border-color .15s;
     }
-    button:hover:not(:disabled) { background: #334155; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-    #status {
-      font-size: 0.75rem;
+    button:hover:not(:disabled) { background: #334155; border-color: #475569; }
+    button:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* ── WHAT TO TEST ── */
+    .guide {
+      margin-top: 32px;
+      width: 100%;
+      max-width: 660px;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .guide summary {
+      padding: 10px 16px;
+      font-size: .7rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #475569;
+      cursor: pointer;
+      user-select: none;
+      background: #1e293b44;
+    }
+    .guide summary:hover { background: #1e293b88; color: #64748b; }
+    .guide-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .guide-row {
+      display: flex;
+      gap: 12px;
+      font-size: .75rem;
+      line-height: 1.6;
+    }
+    .guide-num {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      font-size: .65rem;
+      font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
       color: #64748b;
-      text-align: center;
+      margin-top: 1px;
     }
+    .guide-row b { color: #e2e8f0; }
+    .guide-row code {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: .7rem;
+      color: #818cf8;
+    }
+    .guide-row .ok  { color: #4ade80; }
+    .guide-row .bad { color: #f87171; }
 
-    /* ── loading skeleton ── */
-    @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
-    .skel { background:#1e293b; border-radius:8px; animation: pulse 1.2s ease-in-out infinite; }
-
-    /* ── hide until ready ── */
-    .hidden { display: none !important; }
+    /* ── DIAGNOSTICS (collapsible) ── */
+    .diag {
+      margin-top: 10px;
+      width: 100%;
+      max-width: 660px;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .diag summary {
+      padding: 10px 16px;
+      font-size: .7rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #475569;
+      cursor: pointer;
+      user-select: none;
+      background: #1e293b44;
+    }
+    .diag summary:hover { background: #1e293b88; color: #64748b; }
+    .diag-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 14px;
+    }
+    .dc {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: .65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .dc .dc-name { font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: #475569; }
+    .dc .dc-badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: .55rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+    .dc-badge.ok  { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+    .dc-badge.ng  { background: #2d0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+    .dc-badge.wait{ background: #1e293b; color: #475569; border: 1px solid #334155; }
+    .dc .dc-info { color: #475569; line-height: 1.5; word-break: break-all; margin-top: 2px; }
+    .dc .dc-info.hi { color: #818cf8; }
   </style>
 </head>
 <body>
-  <h1>NewDOM Phase 0 — wgpu + Vello canvas clear</h1>
 
-  <!-- skeleton while detecting -->
-  <div id="loading-caps" style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:720px">
-    <div class="skel" style="height:90px"></div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div class="skel" style="height:80px"></div>
-      <div class="skel" style="height:80px"></div>
-      <div class="skel" style="height:80px"></div>
+  <header>
+    <h1>NewDOM Phase 0 — Vello canvas clear</h1>
+    <p>wgpu 29 (WebGPU) + Vello 0.9 で canvas をソリッドカラーに塗る最小デモ</p>
+  </header>
+
+  <!-- STEP INDICATOR -->
+  <div class="pipeline" id="pipeline">
+    <div class="step" id="s1"><span class="dot"></span>WebGPU 検出</div>
+    <div class="step" id="s2"><span class="dot"></span>WASM ロード</div>
+    <div class="step" id="s3"><span class="dot"></span>wgpu + Vello 初期化</div>
+    <div class="step" id="s4"><span class="dot"></span>canvas 描画</div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="640" height="360"></canvas>
+    <div id="canvas-overlay">
+      <div id="overlay-icon">⏳</div>
+      <div id="overlay-msg">初期化中...</div>
+      <div id="overlay-sub"></div>
     </div>
   </div>
 
-  <!-- preferred engine banner -->
-  <div id="preferred-banner" class="preferred-banner hidden">
-    <div>
-      <div style="font-size:0.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#475569;margin-bottom:6px">Preferred Engine</div>
-      <div id="engine-name" class="engine-name">—</div>
-    </div>
-    <div id="engine-hint" class="engine-hint"></div>
+  <!-- CONTROLS -->
+  <div class="controls">
+    <label>
+      塗りつぶす色:
+      <input type="color" id="colorPicker" value="#3a86ff" />
+    </label>
+    <button id="clearBtn" disabled>nd_clear() を実行</button>
   </div>
 
-  <!-- capability cards -->
-  <div id="caps-grid" class="caps-grid hidden">
-    <!-- WebGPU -->
-    <div class="cap-card" id="card-webgpu">
-      <div class="cap-title">WebGPU</div>
-      <span class="cap-badge wait" id="badge-webgpu">検出中…</span>
-      <div class="cap-detail" id="detail-webgpu"></div>
+  <!-- WHAT TO TEST -->
+  <details class="guide" open>
+    <summary>▶ このデモで何を確認するか</summary>
+    <div class="guide-body">
+      <div class="guide-row">
+        <div class="guide-num">1</div>
+        <div><b>ページを開くと canvas が青く塗られる</b><br>
+          これが成功の証拠。<code>nd_clear(0.23, 0.53, 1.0)</code> が wgpu + Vello を通じて
+          WebGPU compute shader で実行され、640×360 px の canvas をソリッドカラーに塗っている。
+        </div>
+      </div>
+      <div class="guide-row">
+        <div class="guide-num">2</div>
+        <div><b>カラーピッカーで色を変えて「nd_clear() を実行」を押す</b><br>
+          canvas の色が変わればレンダリングループが動いている。
+          これ以降の Issue では この上に Rect ノード・テキスト・レイアウトが乗っていく。
+        </div>
+      </div>
+      <div class="guide-row">
+        <div class="guide-num">?</div>
+        <div class="bad"><b>canvas が真っ暗なまま / ステップが途中で止まる場合</b><br>
+          <span class="ok">①</span> <code>file://</code> ではなく HTTP サーバーで開いていること
+          （<code>npx serve examples/web-demo</code> または VS Code Live Server）<br>
+          <span class="ok">②</span> Chrome 113+ / Edge 113+ を使用していること<br>
+          <span class="ok">③</span> ブラウザの開発者ツール → Console でエラーを確認<br>
+          <span class="ok">④</span> <code>wasm-pack build</code> 後に <code>pkg/</code> フォルダが
+          <code>examples/web-demo/pkg/</code> に存在すること
+        </div>
+      </div>
     </div>
-    <!-- WebGL 2 -->
-    <div class="cap-card" id="card-webgl2">
-      <div class="cap-title">WebGL 2.0</div>
-      <span class="cap-badge wait" id="badge-webgl2">検出中…</span>
-      <div class="cap-detail" id="detail-webgl2"></div>
-    </div>
-    <!-- WebGL -->
-    <div class="cap-card" id="card-webgl">
-      <div class="cap-title">WebGL 1.0</div>
-      <span class="cap-badge wait" id="badge-webgl">検出中…</span>
-      <div class="cap-detail" id="detail-webgl"></div>
-    </div>
-  </div>
+  </details>
 
-  <!-- system advice -->
-  <div id="advice" class="advice hidden"></div>
-
-  <!-- renderer (only shown when WebGPU is available) -->
-  <div id="renderer-section" class="hidden">
-    <canvas id="canvas" width="640" height="480"></canvas>
-    <div class="controls">
-      <label>
-        色を選ぶ:
-        <input type="color" id="colorPicker" value="#3a86ff" />
-      </label>
-      <button id="clearBtn" disabled>nd_clear()</button>
+  <!-- DIAGNOSTICS (collapsible) -->
+  <details class="diag">
+    <summary>▶ ブラウザ Graphics Diagnostics</summary>
+    <div class="diag-grid">
+      <div class="dc">
+        <div class="dc-name">WebGPU</div>
+        <span class="dc-badge wait" id="d-webgpu-badge">検出中…</span>
+        <div class="dc-info hi" id="d-webgpu-info"></div>
+      </div>
+      <div class="dc">
+        <div class="dc-name">WebGL 2.0</div>
+        <span class="dc-badge wait" id="d-webgl2-badge">検出中…</span>
+        <div class="dc-info" id="d-webgl2-info"></div>
+      </div>
+      <div class="dc">
+        <div class="dc-name">WebGL 1.0</div>
+        <span class="dc-badge wait" id="d-webgl-badge">検出中…</span>
+        <div class="dc-info" id="d-webgl-info"></div>
+      </div>
     </div>
-    <p id="status">WASM 読み込み中…</p>
-  </div>
+  </details>
 
   <script type="module">
-    // ── 1. capabilities detection (pure JS, no WASM needed) ──────────────────
+    // ── utils ──────────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
 
-    async function detectGraphics() {
-      const result = {
-        webgpu:  { supported: false },
-        webgl2:  { supported: false },
-        webgl:   { supported: false },
-        preferred: 'None',
-      };
+    function step(id, state /* 'ok'|'run'|'fail' */) {
+      const el = $(id);
+      el.className = `step ${state}`;
+    }
 
-      // WebGPU
-      if (navigator.gpu) {
-        try {
-          const adapter = await navigator.gpu.requestAdapter();
-          if (adapter) {
-            result.webgpu.supported = true;
-            try {
-              // requestAdapterInfo は Chrome 121+ で非推奨だが後方互換で残存
-              const info = await adapter.requestAdapterInfo?.();
-              result.webgpu.adapterName =
-                info?.description || info?.device || 'Generic WebGPU Adapter';
-              result.webgpu.description =
-                [info?.vendor, info?.architecture].filter(Boolean).join(' / ') || '';
-            } catch {
-              result.webgpu.adapterName = 'WebGPU Adapter (info unavailable)';
-            }
-          } else {
-            result.webgpu.reason = 'requestAdapter() returned null（ドライバ/OS が WebGPU を拒否）';
-          }
-        } catch (e) {
-          result.webgpu.reason = String(e);
+    function overlay(icon, msg, sub = '') {
+      $('overlay-icon').textContent = icon;
+      $('overlay-msg').textContent  = msg;
+      $('overlay-sub').textContent  = sub;
+    }
+
+    function overlayGone() {
+      $('canvas-overlay').classList.add('gone');
+    }
+
+    function diagBadge(id, ok, detail, reason) {
+      const badge = $(`d-${id}-badge`);
+      const info  = $(`d-${id}-info`);
+      badge.textContent = ok ? 'Supported' : 'Not Supported';
+      badge.className   = `dc-badge ${ok ? 'ok' : 'ng'}`;
+      info.textContent  = ok ? (detail ?? '') : (reason ?? '');
+    }
+
+    // ── 1. WebGPU + Graphics detection ────────────────────────────────────
+    step('s1', 'run');
+    overlay('🔍', 'WebGPU を検出中...');
+
+    let webgpuOk = false;
+    let webgpuReason = '';
+
+    if (!navigator.gpu) {
+      webgpuReason = 'navigator.gpu が存在しません。このブラウザは WebGPU 非対応、またはページが HTTPS / localhost で提供されていません。';
+    } else {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          webgpuReason = 'requestAdapter() が null を返しました。GPU ドライバが WebGPU を拒否しています。';
+        } else {
+          webgpuOk = true;
+          let adapterName = 'Generic WebGPU Adapter';
+          try {
+            const info = await adapter.requestAdapterInfo?.();
+            if (info) adapterName = info.description || info.device || adapterName;
+          } catch { /* requestAdapterInfo は Chrome 121+ で変更済み */ }
+          diagBadge('webgpu', true, adapterName);
         }
-      } else {
-        result.webgpu.reason = 'navigator.gpu が存在しない（ブラウザ非対応 or HTTPS 必須）';
+      } catch (e) {
+        webgpuReason = String(e);
       }
-
-      // WebGL 2
-      const probe = document.createElement('canvas');
-      const gl2 = probe.getContext('webgl2');
-      if (gl2) {
-        result.webgl2.supported = true;
-        const dbg = gl2.getExtension('WEBGL_debug_renderer_info');
-        if (dbg) {
-          result.webgl2.vendor   = gl2.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
-          result.webgl2.renderer = gl2.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
-        }
-      }
-
-      // WebGL 1
-      const gl  = probe.getContext('webgl');
-      if (gl) {
-        result.webgl.supported = true;
-        const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-        if (dbg) {
-          result.webgl.vendor   = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
-          result.webgl.renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
-        }
-      }
-
-      if      (result.webgpu.supported) result.preferred = 'WebGPU';
-      else if (result.webgl2.supported) result.preferred = 'WebGL2';
-      else if (result.webgl.supported)  result.preferred = 'WebGL';
-
-      return result;
     }
 
-    // ── 2. render caps UI ────────────────────────────────────────────────────
+    // WebGL (参考情報のみ、NewDOM は使わない)
+    const probe = document.createElement('canvas');
+    const gl2 = probe.getContext('webgl2');
+    if (gl2) {
+      const dbg = gl2.getExtension('WEBGL_debug_renderer_info');
+      const renderer = dbg ? gl2.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      diagBadge('webgl2', true, renderer);
+    } else {
+      diagBadge('webgl2', false, '', 'Not Supported');
+    }
+    const gl = probe.getContext('webgl');
+    if (gl) {
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+      diagBadge('webgl', true, renderer);
+    } else {
+      diagBadge('webgl', false, '', 'Not Supported');
+    }
 
-    function renderCaps(info) {
-      document.getElementById('loading-caps').classList.add('hidden');
-      document.getElementById('caps-grid').classList.remove('hidden');
-      document.getElementById('preferred-banner').classList.remove('hidden');
-      document.getElementById('advice').classList.remove('hidden');
+    if (!webgpuOk) {
+      step('s1', 'fail');
+      step('s2', 'fail');
+      step('s3', 'fail');
+      step('s4', 'fail');
+      diagBadge('webgpu', false, '', webgpuReason);
+      overlay('🚫', 'WebGPU 非対応', webgpuReason + '\n\n→ Chrome 113+ / Edge 113+ で開き直してください。file:// ではなく localhost で提供する必要があります。');
+      // ここで終了。WASMは読み込まない。
+    } else {
+      step('s1', 'ok');
 
-      // Preferred engine banner
-      const engineEl   = document.getElementById('engine-name');
-      const engineHint = document.getElementById('engine-hint');
-      engineEl.textContent = info.preferred;
-      engineEl.className   = 'engine-name ' + info.preferred.toLowerCase().replace(/\s/g, '');
+      // ── 2. WASM load ──────────────────────────────────────────────────
+      step('s2', 'run');
+      overlay('📦', 'WASM モジュールを読み込み中...');
 
-      const HINTS = {
-        WebGPU:  'WebGPU が利用可能です。wgpu + Vello による GPU compute レンダリングを使用します。',
-        WebGL2:  'WebGPU は使用できませんが WebGL 2.0 が利用可能です。NewDOM は WebGPU 専用のため動作しません。',
-        WebGL:   'WebGPU・WebGL2 ともに使用できません。NewDOM は動作しません。',
-        None:    'GPU アクセラレーションが利用できません。NewDOM は動作しません。',
-      };
-      engineHint.textContent = HINTS[info.preferred] ?? '';
-
-      // WebGPU card
-      updateCard('webgpu', info.webgpu.supported,
-        info.webgpu.supported
-          ? `✓ ${info.webgpu.adapterName ?? ''}${info.webgpu.description ? '\n' + info.webgpu.description : ''}`
-          : `✗ 非対応\n${info.webgpu.reason ?? ''}`,
-        info.webgpu.supported
-      );
-
-      // WebGL2 card
-      updateCard('webgl2', info.webgl2.supported,
-        info.webgl2.supported
-          ? [info.webgl2.renderer, info.webgl2.vendor].filter(Boolean).join('\n')
-          : '✗ 非対応',
-        false
-      );
-
-      // WebGL card
-      updateCard('webgl', info.webgl.supported,
-        info.webgl.supported
-          ? [info.webgl.renderer, info.webgl.vendor].filter(Boolean).join('\n')
-          : '✗ 非対応',
-        false
-      );
-
-      // Advice section
-      const adviceEl = document.getElementById('advice');
-      const points = [];
-
-      if (!info.webgpu.supported) {
-        points.push({ dot: 'red', text: 'WebGPU が使用できません。' + (info.webgpu.reason ?? '') });
-        points.push({ dot: 'amber', text: '対処法: Chrome 113以降 / Edge 113以降 を使用し、chrome://flags の「Unsafe WebGPU」が有効か確認してください。ローカルファイルでは HTTPS が必要な場合があります。' });
-      } else {
-        points.push({ dot: 'green', text: 'WebGPU が利用可能です。wgpu 29 + Vello 0.9 による GPU compute レンダリングを初期化します。' });
+      let wasmInit, NdRenderer;
+      try {
+        const mod = await import('./pkg/newdom_wasm.js');
+        wasmInit   = mod.default;
+        NdRenderer = mod.NdRenderer;
+        await wasmInit();
+        step('s2', 'ok');
+      } catch (e) {
+        step('s2', 'fail');
+        step('s3', 'fail');
+        step('s4', 'fail');
+        const msg = String(e);
+        const hint = msg.includes('fetch') || msg.includes('Failed to fetch')
+          ? 'pkg/newdom_wasm.js が見つかりません。\n① wasm-pack build を実行済みか確認\n② HTTP サーバーで開いているか確認（file:// 不可）'
+          : msg;
+        overlay('❌', 'WASM ロード失敗', hint);
+        console.error('[newdom] WASM load failed:', e);
+        throw e; // stop here
       }
-      points.push({ dot: 'muted', text: '描画エンジンはブラウザの設定・OSドライバ・セキュリティポリシーにより変わることがあります。' });
 
-      adviceEl.innerHTML = points.map(p =>
-        `<p><span class="dot ${p.dot}">●</span><span>${escHtml(p.text)}</span></p>`
-      ).join('');
-    }
+      // ── 3. wgpu + Vello init ──────────────────────────────────────────
+      step('s3', 'run');
+      overlay('⚙️', 'wgpu + Vello を初期化中...');
 
-    function updateCard(id, supported, detailText, highlight) {
-      const badge  = document.getElementById(`badge-${id}`);
-      const detail = document.getElementById(`detail-${id}`);
-      badge.textContent = supported ? 'Supported' : 'Not Supported';
-      badge.className   = `cap-badge ${supported ? 'ok' : 'ng'}`;
-      detail.textContent = detailText;
-      if (highlight) detail.classList.add('highlight');
-    }
-
-    function escHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
-    // ── 3. WASM renderer init (only if WebGPU available) ─────────────────────
-
-    async function initRenderer() {
-      const { default: init, NdRenderer } = await import('./pkg/newdom_wasm.js');
-      await init();
-
-      const section = document.getElementById('renderer-section');
-      section.classList.remove('hidden');
-
-      const canvas  = document.getElementById('canvas');
-      const status  = document.getElementById('status');
-      const btn     = document.getElementById('clearBtn');
-      const picker  = document.getElementById('colorPicker');
-
+      const canvas = $('canvas');
       let renderer;
       try {
-        status.textContent = 'wgpu + Vello 初期化中…';
         renderer = await NdRenderer.init(canvas);
-        status.textContent = '✓ WebGPU + Vello 初期化完了';
-        btn.disabled = false;
-      } catch (err) {
-        status.textContent = `✗ 初期化失敗: ${err}`;
-        console.error('[newdom]', err);
-        return;
+        step('s3', 'ok');
+      } catch (e) {
+        step('s3', 'fail');
+        step('s4', 'fail');
+        overlay('❌', 'wgpu + Vello 初期化失敗', String(e));
+        console.error('[newdom] Renderer init failed:', e);
+        throw e;
       }
+
+      // ── 4. first paint ───────────────────────────────────────────────
+      step('s4', 'run');
+      overlay('🎨', '初回描画中...');
 
       function hexToRgb(hex) {
         return {
@@ -417,35 +468,32 @@
         };
       }
 
+      const picker = $('colorPicker');
+      const btn    = $('clearBtn');
+
       function doClear() {
         const { r, g, b } = hexToRgb(picker.value);
         try {
           renderer.nd_clear(r, g, b);
-          status.textContent =
-            `✓ nd_clear(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)})`;
-        } catch (err) {
-          status.textContent = `✗ エラー: ${err}`;
-          console.error('[newdom]', err);
+        } catch (e) {
+          overlay('❌', 'nd_clear() 失敗', String(e));
+          console.error('[newdom]', e);
         }
       }
 
-      btn.addEventListener('click', doClear);
-      doClear(); // initial paint
-    }
-
-    // ── 4. main ──────────────────────────────────────────────────────────────
-
-    async function main() {
-      const info = await detectGraphics();
-      renderCaps(info);
-
-      if (info.webgpu.supported) {
-        await initRenderer();
+      try {
+        doClear();
+        step('s4', 'ok');
+        overlayGone();   // canvas が見える
+        btn.disabled = false;
+      } catch (e) {
+        step('s4', 'fail');
+        overlay('❌', 'canvas 描画失敗', String(e));
+        throw e;
       }
-      // WebGPU 非対応時は renderer-section を表示しない（adviceで理由を説明済み）
-    }
 
-    main().catch(err => console.error('[newdom bootstrap]', err));
+      btn.addEventListener('click', doClear);
+    }
   </script>
 </body>
 </html>
