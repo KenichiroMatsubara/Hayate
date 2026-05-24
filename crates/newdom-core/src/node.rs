@@ -10,6 +10,7 @@ pub enum NodeKind {
         width: f32,
         height: f32,
         color: [f32; 4],
+        corner_radius: f32,
     },
 }
 
@@ -50,6 +51,10 @@ impl SceneGraph {
 
     pub fn root(&self) -> Option<NodeId> {
         self.root
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (NodeId, &Node)> {
+        self.nodes.iter()
     }
 }
 
