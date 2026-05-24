@@ -1,0 +1,10 @@
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+
+# Rust build artifacts (when cargo workspace is added)
+target/
+Cargo.lock
+
+# OS
+.DS_Store
+Thumbs.db
