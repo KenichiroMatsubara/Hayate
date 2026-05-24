@@ -50,7 +50,7 @@ newdom.h（C ABI）を各言語の FFI 機構でラップしたもの。TypeScri
 _Avoid_: SDK, Wrapper, Port
 
 **Absolute Layout Tree**:
-ブラウザが HTML/CSS を処理した結果として `getBoundingClientRect()` + `getComputedStyle()` で抽出できる、絶対座標・確定スタイル済みの要素ツリー。CSS エンジンもレイアウトエンジンも不要。この Tree を NewDOM Mutation に変換することが HTML/CSS 互換の実体であり、CSS を実装することではない。Extension Runtime の将来構成では、Absolute Layout Tree を snapshot → 元 DOM を `display:none` → NewDOM で描画 → `nd_hit_test` + `dispatchEvent` でイベントを元 DOM 要素に戻す。
+CSS エンジン（Taffy / Servo / Blink 互換）が HTML/CSS を解析・カスケード・レイアウト計算した結果として出力する、絶対座標・確定スタイル済みの要素ツリー。この Tree を NewDOM Mutation に変換することが HTML/CSS 互換の実体。`getBoundingClientRect()` + `getComputedStyle()` でブラウザから抽出する方法は、ブラウザの reflow コストが消えないため採用しない（ADR-0011）。
 _Avoid_: Computed Tree, Layout Result, Resolved Tree
 
 **DOM Adapter**:
