@@ -45,6 +45,10 @@ _Avoid_: Renderer, Driver
 newdom.h（C ABI）を各言語の FFI 機構でラップしたもの。TypeScript / Python / Swift / Kotlin 等。Binding は薄いラップであり、ロジックを持たない。
 _Avoid_: SDK, Wrapper, Port
 
+**DOM Adapter**:
+NewDOM コア（C ABI）の上に乗る独立した adapter 層（crate: `newdom-dom`）。`createElement` / `appendChild` / `querySelector` / `addEventListener` 等の DOM 互換 API を提供する。内部では NodeId への変換・イベント合成（click / focus / blur）・バブリング・セレクター解決を担う。NewDOM コアではなく、Web 向けフレームワーク（React / Svelte 等）が NewDOM を使いやすくするための厚い adapter である。Binding（薄いラップ）とは明確に異なる。
+_Avoid_: DOM Layer, Web Layer, HTML Adapter（HTML Parser を内包すると誤解される）
+
 **C ABI**:
 newdom.h として公開される関数群。Rust の `extern "C"` + cbindgen で生成する。すべての Binding はこの C ABI を通じて NewDOM と通信する。
 _Avoid_: API, Interface（文脈が曖昧な場合）
