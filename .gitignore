@@ -4,6 +4,9 @@
 # Rust build artifacts
 target/
 
+# Node
+node_modules/
+
 # crates/vendor-all は cargo vendor が生成した全依存の一時鏡
 # ADR-0007 の vendored 5 crates は crates/vendor/ に置き、git 管理する
 crates/vendor-all/
