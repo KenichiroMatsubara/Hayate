@@ -122,6 +122,7 @@ interface element-layer {
   element-set-src: func(id: element-id, url: string) -> ();
   element-set-style: func(id: element-id, props: list<style-prop>) -> ();
   element-append-child: func(parent: element-id, child: element-id) -> ();
+  element-insert-before: func(parent: element-id, child: element-id, before: element-id) -> ();
   element-remove: func(id: element-id) -> ();
 
   // Frame lifecycle (driven by Hayabusa)
