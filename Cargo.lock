@@ -465,6 +465,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "hayate-adapter-web"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "console_error_panic_hook",
+ "console_log",
+ "hayate-core",
+ "js-sys",
+ "log",
+ "slotmap",
+ "vello",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+]
+
+[[package]]
+name = "hayate-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fontique",
+ "log",
+ "parley",
+ "slotmap",
+ "taffy",
+ "vello",
+]
+
+[[package]]
 name = "hexf-parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -789,37 +820,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys 0.3.1",
-]
-
-[[package]]
-name = "newdom-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "fontique",
- "log",
- "parley",
- "slotmap",
- "taffy",
- "vello",
-]
-
-[[package]]
-name = "newdom-wasm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "console_error_panic_hook",
- "console_log",
- "js-sys",
- "log",
- "newdom-core",
- "slotmap",
- "vello",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
 ]
 
 [[package]]
