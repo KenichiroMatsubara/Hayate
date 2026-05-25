@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
 use hayate_core::{
@@ -11,8 +12,12 @@ use vello::{
     peniko::color::Srgb,
 };
 use wasm_bindgen::prelude::*;
-use web_sys::HtmlCanvasElement;
+use web_sys::{Document, Element, HtmlCanvasElement, HtmlElement};
 use wgpu::util::TextureBlitter;
+
+fn document() -> Document {
+    web_sys::window().unwrap().document().unwrap()
+}
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -214,5 +219,79 @@ impl HayateRenderer {
         surface_texture.present();
 
         Ok(())
+    }
+}
+
+/// HTML fallback renderer — maps Rect nodes to absolutely-positioned divs.
+/// Same JS-facing API as `HayateRenderer` so calling code doesn't need to branch.
+#[wasm_bindgen]
+pub struct HayateHtmlRenderer {
+    container: HtmlElement,
+    nodes: HashMap<u64, Element>,
+    next_id: u64,
+}
+
+#[wasm_bindgen]
+impl HayateHtmlRenderer {
+    /// Create an HTML renderer backed by `container` (a div).
+    /// Sets `position:relative; overflow:hidden` on the container.
+    pub fn new(container: HtmlElement) -> Result<HayateHtmlRenderer, JsValue> {
+        let style = container.style();
+        style.set_property("position", "relative")?;
+        style.set_property("overflow", "hidden")?;
+        Ok(HayateHtmlRenderer { container, nodes: HashMap::new(), next_id: 1 })
+    }
+
+    /// Add a Rect node. Returns an opaque node ID (as f64) matching `HayateRenderer`'s API.
+    pub fn node_create(
+        &mut self,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        r: f32,
+        g: f32,
+        b: f32,
+        a: f32,
+        corner_radius: f32,
+    ) -> Result<f64, JsValue> {
+        let doc = document();
+        let el = doc.create_element("div")?;
+        let html_el = el.unchecked_ref::<HtmlElement>();
+        let style = html_el.style();
+        style.set_property("position", "absolute")?;
+        style.set_property("left", &format!("{}px", x))?;
+        style.set_property("top", &format!("{}px", y))?;
+        style.set_property("width", &format!("{}px", width))?;
+        style.set_property("height", &format!("{}px", height))?;
+        style.set_property(
+            "background-color",
+            &format!("rgba({},{},{},{})", (r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8, a),
+        )?;
+        if corner_radius > 0.0 {
+            style.set_property("border-radius", &format!("{}px", corner_radius))?;
+        }
+        self.container.append_child(&el)?;
+
+        let id = self.next_id;
+        self.next_id += 1;
+        self.nodes.insert(id, el);
+        Ok(id as f64)
+    }
+
+    /// Remove a node previously created with `node_create`.
+    pub fn node_remove(&mut self, raw_id: f64) {
+        let id = raw_id as u64;
+        if let Some(el) = self.nodes.remove(&id) {
+            let _ = self.container.remove_child(&el);
+        }
+    }
+
+    /// Update the container's background colour. DOM nodes update instantly so no repaint needed.
+    pub fn render(&self, bg_r: f64, bg_g: f64, bg_b: f64) -> Result<(), JsValue> {
+        self.container.style().set_property(
+            "background-color",
+            &format!("rgb({},{},{})", (bg_r * 255.0) as u8, (bg_g * 255.0) as u8, (bg_b * 255.0) as u8),
+        )
     }
 }

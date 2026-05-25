@@ -66,6 +66,8 @@
     .step.run .dot  { background: #818cf8; }
     .step.fail { color: #f87171; border-color: #7f1d1d; background: #2d0a0a; }
     .step.fail .dot { background: #f87171; }
+    .step.warn { color: #fbbf24; border-color: #78350f; background: #1c1002; }
+    .step.warn .dot { background: #fbbf24; }
     @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
 
     /* ── CANVAS AREA ── */
@@ -298,13 +300,14 @@
   <div class="pipeline" id="pipeline">
     <div class="step" id="s1"><span class="dot"></span>WebGPU 検出</div>
     <div class="step" id="s2"><span class="dot"></span>WASM ロード</div>
-    <div class="step" id="s3"><span class="dot"></span>wgpu + Vello 初期化</div>
+    <div class="step" id="s3"><span class="dot"></span><span id="s3-label">Renderer 初期化</span></div>
     <div class="step" id="s4"><span class="dot"></span>矩形描画</div>
   </div>
 
   <!-- CANVAS -->
   <div class="canvas-wrap">
     <canvas id="canvas" width="640" height="360"></canvas>
+    <div id="html-surface" style="display:none; width:640px; height:360px; position:relative; overflow:hidden;"></div>
     <div id="canvas-overlay">
       <div id="overlay-icon">⏳</div>
       <div id="overlay-msg">初期化中...</div>
@@ -446,39 +449,42 @@
       diagBadge('webgl', true, dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '');
     } else { diagBadge('webgl', false, '', 'Not Supported'); }
 
-    if (!webgpuOk) {
-      step('s1', 'fail'); step('s2', 'fail'); step('s3', 'fail'); step('s4', 'fail');
-      diagBadge('webgpu', false, '', webgpuReason);
-      overlay('🚫', 'WebGPU 非対応', webgpuReason);
-    } else {
+    if (webgpuOk) {
       step('s1', 'ok');
+    } else {
+      step('s1', 'warn');
+      diagBadge('webgpu', false, '', webgpuReason);
+    }
 
-      // ── 2. WASM load ──────────────────────────────────────────────────
-      step('s2', 'run');
-      overlay('📦', 'WASM モジュールを読み込み中...');
+    // ── 2. WASM load (always, regardless of WebGPU) ────────────────────
+    step('s2', 'run');
+    overlay('📦', 'WASM モジュールを読み込み中...');
 
-      let HayateRenderer;
-      try {
-        const mod = await import('./pkg/hayate_adapter_web.js');
-        await mod.default();
-        HayateRenderer = mod.HayateRenderer;
-        step('s2', 'ok');
-      } catch (e) {
-        step('s2', 'fail'); step('s3', 'fail'); step('s4', 'fail');
-        const msg = String(e);
-        const hint = msg.includes('fetch') || msg.includes('Failed to fetch')
-          ? 'pkg/hayate_adapter_web.js が見つかりません。wasm-pack build を実行し、HTTP サーバーで開いてください。'
-          : msg;
-        overlay('❌', 'WASM ロード失敗', hint);
-        console.error('[hayate] WASM load failed:', e);
-        throw e;
-      }
+    let HayateRenderer, HayateHtmlRenderer;
+    try {
+      const mod = await import('./pkg/hayate_adapter_web.js');
+      await mod.default();
+      HayateRenderer = mod.HayateRenderer;
+      HayateHtmlRenderer = mod.HayateHtmlRenderer;
+      step('s2', 'ok');
+    } catch (e) {
+      step('s2', 'fail'); step('s3', 'fail'); step('s4', 'fail');
+      const msg = String(e);
+      const hint = msg.includes('fetch') || msg.includes('Failed to fetch')
+        ? 'pkg/hayate_adapter_web.js が見つかりません。wasm-pack build を実行し、HTTP サーバーで開いてください。'
+        : msg;
+      overlay('❌', 'WASM ロード失敗', hint);
+      console.error('[hayate] WASM load failed:', e);
+      throw e;
+    }
 
-      // ── 3. wgpu + Vello init ──────────────────────────────────────────
-      step('s3', 'run');
+    // ── 3. Renderer init (GPU or HTML fallback) ────────────────────────
+    step('s3', 'run');
+
+    let renderer;
+    if (webgpuOk) {
+      $('s3-label').textContent = 'GPU (wgpu + Vello)';
       overlay('⚙️', 'wgpu + Vello を初期化中...');
-
-      let renderer;
       try {
         renderer = await HayateRenderer.init($('canvas'));
         step('s3', 'ok');
@@ -488,106 +494,120 @@
         console.error('[hayate] Renderer init failed:', e);
         throw e;
       }
-
-      // ── State ─────────────────────────────────────────────────────────
-      // nodes: Array<{ id: number, x, y, w, h, hex, alpha, radius }>
-      const nodes = [];
-      let nodeSeq = 0;
-
-      function render() {
-        const [br, bg, bb] = hexToRgb01($('bgColor').value);
-        try { renderer.render(br, bg, bb); }
-        catch (e) { console.error('[hayate] render:', e); }
-      }
-
-      function rebuildList() {
-        const list = $('nodeList');
-        if (nodes.length === 0) {
-          list.innerHTML = '<div class="node-empty">ノードがありません</div>';
-          return;
-        }
-        list.innerHTML = nodes.map(n => `
-          <div class="node-item" data-seq="${n.seq}">
-            <div class="node-swatch" style="background:${n.hex};opacity:${n.alpha};border-radius:3px"></div>
-            <div class="node-label">
-              #${n.seq} &nbsp;
-              <span>Rect(${n.x}, ${n.y}, ${n.w}×${n.h})</span>
-              &nbsp; radius=${n.radius} alpha=${n.alpha}
-            </div>
-            <button class="node-del danger" data-seq="${n.seq}">削除</button>
-          </div>
-        `).join('');
-
-        list.querySelectorAll('.node-del').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const seq = Number(btn.dataset.seq);
-            const idx = nodes.findIndex(n => n.seq === seq);
-            if (idx === -1) return;
-            renderer.node_remove(nodes[idx].id);
-            nodes.splice(idx, 1);
-            rebuildList();
-            render();
-          });
-        });
-      }
-
-      // ── 4. Initial rects + first paint ───────────────────────────────
-      step('s4', 'run');
-      overlay('🎨', '矩形を描画中...');
-
-      // Add 3 sample rects to show the feature
-      const samples = [
-        { x: 40,  y: 40,  w: 220, h: 130, hex: '#3b82f6', alpha: 1.0,  radius: 16 },
-        { x: 300, y: 60,  w: 160, h: 100, hex: '#f59e0b', alpha: 0.85, radius: 8  },
-        { x: 160, y: 200, w: 300, h: 120, hex: '#10b981', alpha: 0.9,  radius: 24 },
-      ];
-      for (const s of samples) {
-        const [r,g,b] = hexToRgb01(s.hex);
-        const id = renderer.node_create(s.x, s.y, s.w, s.h, r, g, b, s.alpha, s.radius);
-        nodes.push({ seq: ++nodeSeq, id, ...s });
-      }
-
+    } else {
+      $('s3-label').textContent = 'HTML フォールバック';
+      overlay('🌐', 'HTML フォールバックを初期化中...');
       try {
-        render();
-        step('s4', 'ok');
-        overlayGone();
-        rebuildList();
-        $('renderBtn').disabled  = false;
-        $('addBtn').disabled     = false;
-        $('clearAllBtn').disabled = false;
+        $('canvas').style.display = 'none';
+        $('html-surface').style.display = 'block';
+        renderer = HayateHtmlRenderer.new($('html-surface'));
+        step('s3', 'ok');
       } catch (e) {
-        step('s4', 'fail');
-        overlay('❌', 'canvas 描画失敗', String(e));
+        step('s3', 'fail'); step('s4', 'fail');
+        overlay('❌', 'HTML Renderer 初期化失敗', String(e));
+        console.error('[hayate] HTML Renderer init failed:', e);
         throw e;
       }
+    }
 
-      // ── Event handlers ────────────────────────────────────────────────
-      $('renderBtn').addEventListener('click', render);
+    // ── State ─────────────────────────────────────────────────────────
+    // nodes: Array<{ id: number, x, y, w, h, hex, alpha, radius }>
+    const nodes = [];
+    let nodeSeq = 0;
 
-      $('bgColor').addEventListener('input', render);
+    function render() {
+      const [br, bg, bb] = hexToRgb01($('bgColor').value);
+      try { renderer.render(br, bg, bb); }
+      catch (e) { console.error('[hayate] render:', e); }
+    }
 
-      $('addBtn').addEventListener('click', () => {
-        const x = Number($('rx').value);
-        const y = Number($('ry').value);
-        const w = Number($('rw').value);
-        const h = Number($('rh').value);
-        const radius = Number($('rr').value);
-        const hex = $('rcolor').value;
-        const alpha = Number($('ralpha').value);
-        const [r, g, b] = hexToRgb01(hex);
-        const id = renderer.node_create(x, y, w, h, r, g, b, alpha, radius);
-        nodes.push({ seq: ++nodeSeq, id, x, y, w, h, hex, alpha, radius });
-        rebuildList();
-        render();
-      });
+    function rebuildList() {
+      const list = $('nodeList');
+      if (nodes.length === 0) {
+        list.innerHTML = '<div class="node-empty">ノードがありません</div>';
+        return;
+      }
+      list.innerHTML = nodes.map(n => `
+        <div class="node-item" data-seq="${n.seq}">
+          <div class="node-swatch" style="background:${n.hex};opacity:${n.alpha};border-radius:3px"></div>
+          <div class="node-label">
+            #${n.seq} &nbsp;
+            <span>Rect(${n.x}, ${n.y}, ${n.w}×${n.h})</span>
+            &nbsp; radius=${n.radius} alpha=${n.alpha}
+          </div>
+          <button class="node-del danger" data-seq="${n.seq}">削除</button>
+        </div>
+      `).join('');
 
-      $('clearAllBtn').addEventListener('click', () => {
-        for (const n of nodes) renderer.node_remove(n.id);
-        nodes.length = 0;
-        rebuildList();
-        render();
+      list.querySelectorAll('.node-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const seq = Number(btn.dataset.seq);
+          const idx = nodes.findIndex(n => n.seq === seq);
+          if (idx === -1) return;
+          renderer.node_remove(nodes[idx].id);
+          nodes.splice(idx, 1);
+          rebuildList();
+          render();
+        });
       });
     }
+
+    // ── 4. Initial rects + first paint ───────────────────────────────
+    step('s4', 'run');
+    overlay('🎨', '矩形を描画中...');
+
+    // Add 3 sample rects to show the feature
+    const samples = [
+      { x: 40,  y: 40,  w: 220, h: 130, hex: '#3b82f6', alpha: 1.0,  radius: 16 },
+      { x: 300, y: 60,  w: 160, h: 100, hex: '#f59e0b', alpha: 0.85, radius: 8  },
+      { x: 160, y: 200, w: 300, h: 120, hex: '#10b981', alpha: 0.9,  radius: 24 },
+    ];
+    for (const s of samples) {
+      const [r,g,b] = hexToRgb01(s.hex);
+      const id = renderer.node_create(s.x, s.y, s.w, s.h, r, g, b, s.alpha, s.radius);
+      nodes.push({ seq: ++nodeSeq, id, ...s });
+    }
+
+    try {
+      render();
+      step('s4', 'ok');
+      overlayGone();
+      rebuildList();
+      $('renderBtn').disabled  = false;
+      $('addBtn').disabled     = false;
+      $('clearAllBtn').disabled = false;
+    } catch (e) {
+      step('s4', 'fail');
+      overlay('❌', 'canvas 描画失敗', String(e));
+      throw e;
+    }
+
+    // ── Event handlers ────────────────────────────────────────────────
+    $('renderBtn').addEventListener('click', render);
+
+    $('bgColor').addEventListener('input', render);
+
+    $('addBtn').addEventListener('click', () => {
+      const x = Number($('rx').value);
+      const y = Number($('ry').value);
+      const w = Number($('rw').value);
+      const h = Number($('rh').value);
+      const radius = Number($('rr').value);
+      const hex = $('rcolor').value;
+      const alpha = Number($('ralpha').value);
+      const [r, g, b] = hexToRgb01(hex);
+      const id = renderer.node_create(x, y, w, h, r, g, b, alpha, radius);
+      nodes.push({ seq: ++nodeSeq, id, x, y, w, h, hex, alpha, radius });
+      rebuildList();
+      render();
+    });
+
+    $('clearAllBtn').addEventListener('click', () => {
+      for (const n of nodes) renderer.node_remove(n.id);
+      nodes.length = 0;
+      rebuildList();
+      render();
+    });
   </script>
 </body>
 </html>

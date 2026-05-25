@@ -20,6 +20,10 @@ web-sys = { workspace = true, features = [
     "Window",
     "Navigator",
     "Gpu",
+    "Document",
+    "HtmlElement",
+    "Element",
+    "CssStyleDeclaration",
 ] }
 anyhow.workspace = true
 log.workspace = true
