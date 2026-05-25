@@ -1,0 +1,163 @@
+package hayate:core@0.1.0;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface types {
+  type element-id = u64;
+
+  enum element-kind {
+    view,
+    text,
+    image,
+    button,
+    text-input,
+    scroll-view,
+  }
+
+  // Dimension
+  enum dimension-unit { px, percent, auto, fr }
+  record dimension {
+    value: f32,
+    unit: dimension-unit,
+  }
+
+  // Color (linear RGBA)
+  record color {
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32,
+  }
+
+  // Layout
+  enum display-value { flex, grid, block, none }
+  enum align-value { flex-start, flex-end, center, stretch, baseline }
+  enum justify-value { flex-start, flex-end, center, space-between, space-around, space-evenly }
+  enum flex-direction-value { row, column, row-reverse, column-reverse }
+
+  // Hayate CSS — style properties as variant list
+  variant style-prop {
+    // visual
+    background-color(color),
+    opacity(f32),
+    border-radius(f32),
+    border-width(f32),
+    border-color(color),
+    // sizing
+    width(dimension),
+    height(dimension),
+    min-width(dimension),
+    min-height(dimension),
+    max-width(dimension),
+    max-height(dimension),
+    // layout
+    display(display-value),
+    flex-direction(flex-direction-value),
+    align-items(align-value),
+    justify-content(justify-value),
+    gap(dimension),
+    padding(dimension),
+    padding-top(dimension),
+    padding-right(dimension),
+    padding-bottom(dimension),
+    padding-left(dimension),
+    margin(dimension),
+    margin-top(dimension),
+    margin-right(dimension),
+    margin-bottom(dimension),
+    margin-left(dimension),
+    // text
+    font-size(f32),
+    color(color),
+  }
+
+  // Events
+  record click-event {
+    target: element-id,
+    x: f32,
+    y: f32,
+  }
+  record text-input-event {
+    target: element-id,
+    text: string,
+  }
+  record composition-event {
+    target: element-id,
+    text: string,
+  }
+  record scroll-event {
+    target: element-id,
+    delta-x: f32,
+    delta-y: f32,
+  }
+  record resize-event {
+    width: f32,
+    height: f32,
+  }
+
+  variant event {
+    click(click-event),
+    focus(element-id),
+    blur(element-id),
+    text-input(text-input-event),
+    composition-start(composition-event),
+    composition-update(composition-event),
+    composition-end(composition-event),
+    scroll(scroll-event),
+    resize(resize-event),
+  }
+}
+
+// ─── Element Layer ────────────────────────────────────────────────────────────
+
+interface element-layer {
+  use types.{
+    element-id, element-kind,
+    style-prop, event,
+  };
+
+  // Element tree management
+  element-create: func(kind: element-kind) -> element-id;
+  element-set-text: func(id: element-id, text: string) -> ();
+  element-set-src: func(id: element-id, url: string) -> ();
+  element-set-style: func(id: element-id, props: list<style-prop>) -> ();
+  element-append-child: func(parent: element-id, child: element-id) -> ();
+  element-insert-before: func(parent: element-id, child: element-id, before: element-id) -> ();
+  element-remove: func(id: element-id) -> ();
+  element-get-text: func(id: element-id) -> string;
+
+  // Frame lifecycle (driven by Hayabusa)
+  render: func() -> ();
+  poll-events: func() -> list<event>;
+}
+
+// ─── Raw Layer ────────────────────────────────────────────────────────────────
+
+interface raw-layer {
+  use types.{color};
+
+  type node-id = u64;
+
+  record rect-desc {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: color,
+    corner-radius: f32,
+  }
+
+  // Node management
+  create-rect: func(desc: rect-desc) -> node-id;
+  node-remove: func(id: node-id) -> ();
+
+  // Frame lifecycle
+  render: func(background: color) -> ();
+}
+
+// ─── World ────────────────────────────────────────────────────────────────────
+
+world hayate {
+  export element-layer;
+  export raw-layer;
+}
