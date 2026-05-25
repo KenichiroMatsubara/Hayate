@@ -62,6 +62,10 @@ _Avoid_: State, Observable, Store（Store は別の概念）
 Hayate 内部の描画オブジェクト間の親子・描画順序・transform / clip 関係を表す保持型グラフ。z-order / transform 継承 / clip / hit-test / grouping のための補助構造。NodeId 指定で直接 mutation される実体オブジェクト群。
 _Avoid_: Virtual DOM, Component Tree
 
+**Z-Order**:
+SceneGraph の描画順序制御。同一 parent 内で `StyleProp::ZIndex(n)` が高い子ほど後に walk され、前景に描画される（painter's algorithm）。「親の兄弟より前景に出る」ケース（モーダル・tooltip）はアプリ側が root 直下に要素を配置することで解決し、CSS stacking context 相当の概念は Hayate に持ち込まない。
+_Avoid_: NodeKind::Layer、stacking context
+
 **Transform Group**:
 SceneGraph の Node 種別の一つ（`NodeKind::Group`）。affine 変換行列を保持し、子 Node 群に GPU 側で matrix を適用する。Vello の `push_transform()` / `pop()` に対応する。`StyleProp::Transform` として座標に焼き込む方式とは異なり、layout 再計算ゼロでサブツリー全体を変換できるため、アニメーションの基盤となる。
 _Avoid_: StyleProp::Transform（座標焼き込み方式は layout 再計算が不要にならない）
