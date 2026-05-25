@@ -62,6 +62,10 @@ _Avoid_: State, Observable, Store（Store は別の概念）
 Hayate 内部の描画オブジェクト間の親子・描画順序・transform / clip 関係を表す保持型グラフ。z-order / transform 継承 / clip / hit-test / grouping のための補助構造。NodeId 指定で直接 mutation される実体オブジェクト群。
 _Avoid_: Virtual DOM, Component Tree
 
+**Scroll Offset**:
+`scroll-view` Element のスクロール位置（x, y）。Hayate は保持せず、上位層（Hayabusa）が `poll-events()` の scroll イベントから delta を積算して管理する。毎フレーム `element_set_scroll_offset(id, x, y)` で Hayate に渡し、Hayate は `scene_build` 時に子要素の座標をオフセット分だけ平行移動しクリップ矩形を適用する。イナーシャ・スナップ等の物理演算は Hayabusa の責務。
+_Avoid_: Hayate がスクロール状態を持つ設計、StyleProp::ScrollOffset
+
 **Z-Order**:
 SceneGraph の描画順序制御。同一 parent 内で `StyleProp::ZIndex(n)` が高い子ほど後に walk され、前景に描画される（painter's algorithm）。「親の兄弟より前景に出る」ケース（モーダル・tooltip）はアプリ側が root 直下に要素を配置することで解決し、CSS stacking context 相当の概念は Hayate に持ち込まない。
 _Avoid_: NodeKind::Layer、stacking context
