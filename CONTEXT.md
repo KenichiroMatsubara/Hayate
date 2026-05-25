@@ -23,6 +23,10 @@ _Avoid_: Hayate の別名、エンジン
 Hayate の上位 WIT インターフェース。element tree の作成・Hayate CSS スタイルの設定・ツリー組み立てを受け付け、内部でレイアウト計算（Taffy）とスタイル解決を行い Raw Layer に渡す。Hayabusa および他言語 SDK はこの層を使う。
 _Avoid_: 上位 API、UI 層、Scene Layer
 
+**Element（要素）**:
+Element Layer が受け付ける UI の構成単位。React Native 語彙を採用し、`view` / `text` / `image` / `button` / `text-input` / `scroll-view` を基本型とする。HTML タグ名（div / span / input 等）は使用しない。LLM の訓練データ上で React Native・SwiftUI・Jetpack Compose の三系統に共通する語彙であり、文脈なしでも意味が一意になる。
+_Avoid_: div, span, section, p, h1〜h6（HTML 語彙全般）
+
 **Hayate CSS**:
 Hayate 固有のスタイルシステム。レイアウトプロパティ（display / gap / align-items / grid-template-columns 等）は Taffy の CSS Flexbox / Grid / Block 実装を仕様書とする。ビジュアルプロパティ（color / background-color / border-radius / opacity 等）は CSS プロパティ名を踏襲しつつ Hayate が対応サブセットを定義する。CSS 互換実装ではなく、CSS 命名を採用した Hayate 固有の仕様である。
 _Avoid_: CSS、CSS 風スタイル、Element Style
