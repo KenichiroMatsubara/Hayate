@@ -66,6 +66,10 @@ _Avoid_: HTML、JSX、テンプレートエンジン（Handlebars 等）
 特定言語向けの Hayabusa SDK 実装。Signal・Computed・Effect・on_mount・on_destroy・prop・emit の各プリミティブを当該言語のイディオムで提供し、Hayate Element Layer の WIT API を薄くラップする。一プロジェクトで使用できる Script Adapter は一つだけであり、`hayabusa.toml` の `[script] language` で宣言する。
 _Avoid_: プラグイン、バインディング（WIT binding と混同するため）
 
+**Prop**:
+コンポーネントが外部から受け取る入力値。`<script>` 内で `prop("name")` 関数呼び出しにより宣言する（例: `const label = prop<string>("label")`）。コンパイラは `<script>` の AST を静的スキャンして `prop()` 呼び出しを検出し、コンポーネントの props インターフェースを確定する。`<template>` からは通常の識別子として参照できる。
+_Avoid_: export（言語ごとのエクスポート構文はコンパイラの判定ルールが言語依存になるため使わない）
+
 **Signal**:
 Hayabusa のリアクティビティの基本単位。値の変化が依存する Computed・Effect に自動伝播する。グラフの追跡・伝播・スケジューリングは Hayabusa の単一 WASM ランタイムが担い、全言語の Script Adapter は WIT 経由でこのランタイムを呼び出す。言語ごとの表記（Rust: `.get()` / TypeScript・Python: `.value`）は Script Adapter の薄いラッパーが提供する。テンプレートからは識別子のみで参照でき、コンパイラが言語別のアクセス形式に展開する。
 _Avoid_: State, Observable, Store（Store は別の概念）
