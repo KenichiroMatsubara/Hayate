@@ -30,6 +30,17 @@ pub enum NodeKind {
         color: [f32; 4],
         data: Arc<TextRunData>,
     },
+    /// Applies an affine transform (kurbo coefficients [a,b,c,d,e,f]) to its children.
+    Group {
+        transform: [f64; 6],
+    },
+    /// Clips its children to the given axis-aligned rectangle.
+    Clip {
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -40,21 +51,27 @@ pub struct Node {
 
 pub struct SceneGraph {
     nodes: SlotMap<NodeId, Node>,
-    root: Option<NodeId>,
+    /// Top-level nodes in paint order (no parent). Children of Group/Clip are not listed here.
+    roots: Vec<NodeId>,
 }
 
 impl SceneGraph {
     pub fn new() -> Self {
-        Self {
-            nodes: SlotMap::new(),
-            root: None,
-        }
+        Self { nodes: SlotMap::new(), roots: Vec::new() }
     }
 
+    /// Insert a top-level (root) node.
     pub fn insert(&mut self, node: Node) -> NodeId {
         let id = self.nodes.insert(node);
-        if self.root.is_none() {
-            self.root = Some(id);
+        self.roots.push(id);
+        id
+    }
+
+    /// Insert a node as a child of an existing node.
+    pub fn insert_child(&mut self, parent: NodeId, node: Node) -> NodeId {
+        let id = self.nodes.insert(node);
+        if let Some(p) = self.nodes.get_mut(parent) {
+            p.children.push(id);
         }
         id
     }
@@ -67,8 +84,14 @@ impl SceneGraph {
         self.nodes.remove(id)
     }
 
+    /// First root node (backward compat).
     pub fn root(&self) -> Option<NodeId> {
-        self.root
+        self.roots.first().copied()
+    }
+
+    /// All top-level nodes in paint order.
+    pub fn roots(&self) -> &[NodeId] {
+        &self.roots
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (NodeId, &Node)> {

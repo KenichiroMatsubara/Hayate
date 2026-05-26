@@ -158,6 +158,52 @@ fn scene_build_walks_absolute_coordinates() {
     assert!((y - 20.0).abs() < 0.5, "child y = {y}");
 }
 
+// ── Transform / Group tests ──────────────────────────────────────────────
+
+#[test]
+fn transform_emits_group_node() {
+    use hayate_core::{NodeKind};
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::View);
+    tree.set_root(root);
+    tree.set_viewport(200.0, 200.0);
+    tree.element_set_style(
+        root,
+        &[
+            StyleProp::Width(Dimension::px(200.0)),
+            StyleProp::Height(Dimension::px(200.0)),
+            StyleProp::BackgroundColor(Color::new(1.0, 0.0, 0.0, 1.0)),
+        ],
+    );
+    // Identity transform — Group node should appear, Rect should be its child.
+    let identity = [1.0_f64, 0.0, 0.0, 1.0, 0.0, 0.0];
+    tree.element_set_transform(root, Some(identity));
+    let sg = tree.render();
+
+    let mut group_count = 0usize;
+    let mut rect_count = 0usize;
+    for (_, n) in sg.iter() {
+        match &n.kind {
+            NodeKind::Group { .. } => group_count += 1,
+            NodeKind::Rect { .. } => rect_count += 1,
+            _ => {}
+        }
+    }
+    assert_eq!(group_count, 1, "expected one Group node");
+    assert_eq!(rect_count, 1, "expected one Rect node (background)");
+
+    // Group should be a root; Rect should be inside the Group (a child, not a root).
+    let groups: Vec<_> = sg
+        .roots()
+        .iter()
+        .filter(|&&id| matches!(sg.get(id).unwrap().kind, NodeKind::Group { .. }))
+        .copied()
+        .collect();
+    assert_eq!(groups.len(), 1, "Group should be a root node");
+    let group_node = sg.get(groups[0]).unwrap();
+    assert_eq!(group_node.children.len(), 1, "Rect should be a child of Group");
+}
+
 // ── ZIndex tests ─────────────────────────────────────────────────────────
 
 #[test]

@@ -50,6 +50,8 @@ pub(crate) struct Element {
     pub text: Option<String>,
     pub src: Option<String>,
     pub text_layout: Option<TextLayout>,
+    /// Optional affine transform applied on top of layout (kurbo coefficients [a,b,c,d,e,f]).
+    pub transform: Option<[f64; 6]>,
 }
 
 /// Events emitted by input wiring and drained by `poll_events`.
@@ -155,6 +157,7 @@ impl ElementTree {
             text: None,
             src: None,
             text_layout: None,
+            transform: None,
         };
         let id = self.elements.insert(element);
 
@@ -184,6 +187,14 @@ impl ElementTree {
     pub fn element_set_src(&mut self, id: ElementId, url: &str) {
         if let Some(el) = self.elements.get_mut(id) {
             el.src = Some(url.to_string());
+        }
+    }
+
+    /// Set a 2D affine transform on the element (6 kurbo coefficients [a,b,c,d,e,f]).
+    /// Pass an empty/None to clear. The transform is applied on top of layout coordinates.
+    pub fn element_set_transform(&mut self, id: ElementId, matrix: Option<[f64; 6]>) {
+        if let Some(el) = self.elements.get_mut(id) {
+            el.transform = matrix;
         }
     }
 

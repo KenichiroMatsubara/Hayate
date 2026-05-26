@@ -95,6 +95,17 @@ impl HayateElementRenderer {
         Ok(())
     }
 
+    /// Set a 2D affine transform on the element. Pass exactly 6 f64 coefficients [a,b,c,d,e,f],
+    /// or an empty slice to clear.
+    pub fn element_set_transform(&mut self, id: f64, matrix: &[f64]) {
+        let m = if matrix.len() == 6 {
+            Some([matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]])
+        } else {
+            None
+        };
+        self.tree.element_set_transform(element_id_from_f64(id), m);
+    }
+
     pub fn element_append_child(&mut self, parent: f64, child: f64) {
         self.tree
             .element_append_child(element_id_from_f64(parent), element_id_from_f64(child));
@@ -211,6 +222,15 @@ impl HayateElementHtmlRenderer {
         let props = style_packet::decode(packed)?;
         self.tree.element_set_style(element_id_from_f64(id), &props);
         Ok(())
+    }
+
+    pub fn element_set_transform(&mut self, id: f64, matrix: &[f64]) {
+        let m = if matrix.len() == 6 {
+            Some([matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]])
+        } else {
+            None
+        };
+        self.tree.element_set_transform(element_id_from_f64(id), m);
     }
 
     pub fn element_append_child(&mut self, parent: f64, child: f64) {
