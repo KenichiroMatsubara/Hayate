@@ -52,6 +52,8 @@ pub(crate) struct Element {
     pub text_layout: Option<TextLayout>,
     /// Optional affine transform applied on top of layout (kurbo coefficients [a,b,c,d,e,f]).
     pub transform: Option<[f64; 6]>,
+    /// Scroll offset for ScrollView elements (x, y in pixels).
+    pub scroll_offset: (f32, f32),
 }
 
 /// Events emitted by input wiring and drained by `poll_events`.
@@ -158,6 +160,7 @@ impl ElementTree {
             src: None,
             text_layout: None,
             transform: None,
+            scroll_offset: (0.0, 0.0),
         };
         let id = self.elements.insert(element);
 
@@ -196,6 +199,18 @@ impl ElementTree {
         if let Some(el) = self.elements.get_mut(id) {
             el.transform = matrix;
         }
+    }
+
+    /// Programmatically set the scroll offset of a ScrollView element.
+    pub fn element_set_scroll_offset(&mut self, id: ElementId, x: f32, y: f32) {
+        if let Some(el) = self.elements.get_mut(id) {
+            el.scroll_offset = (x, y);
+        }
+    }
+
+    /// Read the current scroll offset of an element.
+    pub fn element_get_scroll_offset(&self, id: ElementId) -> (f32, f32) {
+        self.elements.get(id).map_or((0.0, 0.0), |e| e.scroll_offset)
     }
 
     pub fn element_set_style(&mut self, id: ElementId, props: &[StyleProp]) {
@@ -305,6 +320,10 @@ impl ElementTree {
 
     pub fn element_kind(&self, id: ElementId) -> Option<ElementKind> {
         self.elements.get(id).map(|e| e.kind)
+    }
+
+    pub fn element_parent(&self, id: ElementId) -> Option<ElementId> {
+        self.elements.get(id).and_then(|e| e.parent)
     }
 
     /// Run layout, lower the element tree into the scene graph, and return it.

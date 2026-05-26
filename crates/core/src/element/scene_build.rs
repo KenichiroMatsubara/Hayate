@@ -1,4 +1,5 @@
 use crate::element::id::ElementId;
+use crate::element::kind::ElementKind;
 use crate::element::tree::ElementTree;
 use crate::node::{Node, NodeId, NodeKind, SceneGraph};
 
@@ -46,6 +47,34 @@ fn walk(
         Some(group_id)
     } else {
         parent_group
+    };
+
+    // ScrollView: clip to its bounds, then apply a translate for the scroll offset.
+    let effective_parent = if el.kind == ElementKind::ScrollView {
+        let clip_id = emit(
+            sg,
+            effective_parent,
+            Node { kind: NodeKind::Clip { x, y, width: w, height: h }, children: Vec::new() },
+        );
+        let (sx, sy) = el.scroll_offset;
+        if sx != 0.0 || sy != 0.0 {
+            // Negative translate shifts content up/left so positive offset scrolls down/right.
+            let scroll_group = emit(
+                sg,
+                Some(clip_id),
+                Node {
+                    kind: NodeKind::Group {
+                        transform: [1.0, 0.0, 0.0, 1.0, -sx as f64, -sy as f64],
+                    },
+                    children: Vec::new(),
+                },
+            );
+            Some(scroll_group)
+        } else {
+            Some(clip_id)
+        }
+    } else {
+        effective_parent
     };
 
     // 1) Background fill.

@@ -158,6 +158,76 @@ fn scene_build_walks_absolute_coordinates() {
     assert!((y - 20.0).abs() < 0.5, "child y = {y}");
 }
 
+// ── ScrollView tests ─────────────────────────────────────────────────────
+
+#[test]
+fn scroll_view_emits_clip_node() {
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::ScrollView);
+    let content = tree.element_create(ElementKind::View);
+    tree.set_root(root);
+    tree.set_viewport(300.0, 300.0);
+    tree.element_set_style(
+        root,
+        &[StyleProp::Width(Dimension::px(200.0)), StyleProp::Height(Dimension::px(100.0))],
+    );
+    tree.element_set_style(
+        content,
+        &[
+            StyleProp::Width(Dimension::px(200.0)),
+            StyleProp::Height(Dimension::px(500.0)),
+            StyleProp::BackgroundColor(Color::new(0.0, 1.0, 0.0, 1.0)),
+        ],
+    );
+    tree.element_append_child(root, content);
+    let sg = tree.render();
+
+    let clip_count = sg.iter().filter(|(_, n)| matches!(n.kind, NodeKind::Clip { .. })).count();
+    assert_eq!(clip_count, 1, "ScrollView should emit exactly one Clip node");
+}
+
+#[test]
+fn scroll_view_clip_contains_content_as_child() {
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::ScrollView);
+    let content = tree.element_create(ElementKind::View);
+    tree.set_root(root);
+    tree.set_viewport(300.0, 300.0);
+    tree.element_set_style(
+        root,
+        &[StyleProp::Width(Dimension::px(200.0)), StyleProp::Height(Dimension::px(100.0))],
+    );
+    tree.element_set_style(
+        content,
+        &[
+            StyleProp::Width(Dimension::px(200.0)),
+            StyleProp::Height(Dimension::px(500.0)),
+            StyleProp::BackgroundColor(Color::new(0.0, 1.0, 0.0, 1.0)),
+        ],
+    );
+    tree.element_append_child(root, content);
+
+    // Apply a scroll offset and verify it produces a Group inside the Clip.
+    tree.element_set_scroll_offset(root, 0.0, 50.0);
+    let sg = tree.render();
+
+    // Find the Clip node — it should be in the roots list.
+    let clip_root = sg
+        .roots()
+        .iter()
+        .find(|&&id| matches!(sg.get(id).unwrap().kind, NodeKind::Clip { .. }))
+        .copied()
+        .expect("Clip should be a root node");
+    let clip_node = sg.get(clip_root).unwrap();
+    // Clip's first child should be a Group (scroll translate).
+    assert!(!clip_node.children.is_empty(), "Clip should have children");
+    let first_child = sg.get(clip_node.children[0]).unwrap();
+    assert!(
+        matches!(first_child.kind, NodeKind::Group { .. }),
+        "Clip's first child should be a Group (scroll offset)"
+    );
+}
+
 // ── Transform / Group tests ──────────────────────────────────────────────
 
 #[test]

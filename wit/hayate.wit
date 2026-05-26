@@ -123,6 +123,7 @@ interface element-layer {
   element-set-text: func(id: element-id, text: string) -> ();
   element-set-src: func(id: element-id, url: string) -> ();
   element-set-transform: func(id: element-id, matrix: list<f64>) -> ();
+  element-set-scroll-offset: func(id: element-id, x: f32, y: f32) -> ();
   element-set-style: func(id: element-id, props: list<style-prop>) -> ();
   element-append-child: func(parent: element-id, child: element-id) -> ();
   element-insert-before: func(parent: element-id, child: element-id, before: element-id) -> ();

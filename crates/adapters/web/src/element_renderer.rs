@@ -160,6 +160,11 @@ impl HayateElementRenderer {
 
     pub fn on_wheel(&mut self, x: f32, y: f32, delta_x: f32, delta_y: f32) {
         if let Some(target) = self.tree.hit_test(x, y) {
+            // Find the nearest ScrollView ancestor (or self) to apply offset to.
+            if let Some(sv) = nearest_scroll_view(&self.tree, target) {
+                let (ox, oy) = self.tree.element_get_scroll_offset(sv);
+                self.tree.element_set_scroll_offset(sv, ox + delta_x, oy + delta_y);
+            }
             self.tree.push_event(Event::Scroll { target, delta_x, delta_y });
         }
     }
@@ -167,6 +172,10 @@ impl HayateElementRenderer {
     pub fn on_resize(&mut self, width: f32, height: f32) {
         self.tree.set_viewport(width, height);
         self.tree.push_event(Event::Resize { width, height });
+    }
+
+    pub fn element_set_scroll_offset(&mut self, id: f64, x: f32, y: f32) {
+        self.tree.element_set_scroll_offset(element_id_from_f64(id), x, y);
     }
 
     pub fn poll_events(&mut self) -> Box<[f64]> {
@@ -329,6 +338,10 @@ impl HayateElementHtmlRenderer {
 
     pub fn on_wheel(&mut self, x: f32, y: f32, delta_x: f32, delta_y: f32) {
         if let Some(target) = self.tree.hit_test(x, y) {
+            if let Some(sv) = nearest_scroll_view(&self.tree, target) {
+                let (ox, oy) = self.tree.element_get_scroll_offset(sv);
+                self.tree.element_set_scroll_offset(sv, ox + delta_x, oy + delta_y);
+            }
             self.tree.push_event(Event::Scroll { target, delta_x, delta_y });
         }
     }
@@ -338,9 +351,23 @@ impl HayateElementHtmlRenderer {
         self.tree.push_event(Event::Resize { width, height });
     }
 
+    pub fn element_set_scroll_offset(&mut self, id: f64, x: f32, y: f32) {
+        self.tree.element_set_scroll_offset(element_id_from_f64(id), x, y);
+    }
+
     pub fn poll_events(&mut self) -> Box<[f64]> {
         let events = self.tree.poll_events();
         encode_events(&events)
+    }
+}
+
+/// Walk up the element tree to find the nearest ScrollView at or above `id`.
+fn nearest_scroll_view(tree: &ElementTree, mut id: ElementId) -> Option<ElementId> {
+    loop {
+        if tree.element_kind(id) == Some(ElementKind::ScrollView) {
+            return Some(id);
+        }
+        id = tree.element_parent(id)?;
     }
 }
 
@@ -393,6 +420,10 @@ fn apply_resolved_to_dom(html_el: &HtmlElement, el: &ResolvedElement) -> Result<
         style.set_property("box-sizing", "border-box")?;
     } else {
         style.set_property("border", "none")?;
+    }
+
+    if el.kind == ElementKind::ScrollView {
+        style.set_property("overflow", "hidden")?;
     }
 
     if let Some(text) = &el.text {
