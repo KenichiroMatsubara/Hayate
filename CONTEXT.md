@@ -54,8 +54,16 @@ _Avoid_: フォールバック（劣化の含意を避けるため）、DOM Mode
 ポインタやキーボード操作に起因する要素単位のイベント。`hover-enter` / `hover-leave` / `focus` / `blur` / `active-start` / `active-end` 等を含み、`poll-events()` で上位層に通知される。Hayate はイベントを通知するだけであり、インタラクション状態に応じたスタイル切り替えは上位層（Hayabusa の Signal / Effect）の責務。Hayate は「ホバー中スタイル」という概念を持たない。
 _Avoid_: :hover スタイル、状態付きスタイル、CSS 擬似クラス
 
+**Template DSL**:
+`.hbs` の `<template>` セクション内で使う言語非依存のマークアップ言語。タグ名は Hayate の `element-kind`（`view` / `text` / `image` / `button` / `text-input` / `scroll-view`）に直接マップされる。HTML タグ名（`div` / `p` / `h1` 等）は使用しない。式は `{}` で囲まれた制限付き DSL で記述し、特定プログラミング言語の構文に依存しない。
+_Avoid_: HTML、JSX、テンプレートエンジン（Handlebars 等）
+
+**Script Adapter**:
+特定言語向けの Hayabusa SDK 実装。Signal・Computed・Effect・on_mount・on_destroy・prop・emit の各プリミティブを当該言語のイディオムで提供し、Hayate Element Layer の WIT API を薄くラップする。一プロジェクトで使用できる Script Adapter は一つだけであり、`hayabusa.toml` の `[script] language` で宣言する。
+_Avoid_: プラグイン、バインディング（WIT binding と混同するため）
+
 **Signal**:
-Hayabusa のリアクティビティの基本単位。アリーナ型実装により `Copy` 可能なトークンとして提供され、所有権問題を回避する。Signal の値変化は依存する Memo・Effect・View に自動伝播する。
+Hayabusa のリアクティビティの基本単位。値の変化が依存する Computed・Effect に自動伝播する。各 Script Adapter が当該言語のイディオムで実装を提供する（Rust: アリーナ型 Copy トークン / TypeScript: `.value` アクセサ / Python: `.value` プロパティ等）。テンプレートからは識別子のみで参照でき、コンパイラが言語別のアクセス形式に展開する。
 _Avoid_: State, Observable, Store（Store は別の概念）
 
 **Scene Graph**:
