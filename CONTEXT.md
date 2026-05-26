@@ -16,7 +16,7 @@ DOM 互換は設計目標に含まない。
 _Avoid_: フレームワーク、ライブラリ、レンダラー単体
 
 **Hayabusa（隼）**:
-Hayate の Element Layer 上に構築された Signal ベースの SFC（Single-File Component）フレームワーク。`.hbs` ファイル形式を採用し、テンプレートとスタイルは言語非依存の Hayabusa DSL で記述する。スクリプト層はプロジェクト単位で選択された単一言語（TypeScript / Rust / Python 等）で記述され、言語アダプタ経由で Signal・Computed・Effect 等のリアクティブプリミティブを提供する。Hayate コアは Hayabusa の存在を知らない。
+Hayate の Element Layer 上に構築された Signal ベースの SFC（Single-File Component）フレームワーク。`.hybs` ファイル形式を採用し、テンプレートとスタイルは言語非依存の Hayabusa DSL で記述する。スクリプト層はプロジェクト単位で選択された単一言語（TypeScript / Rust / Python 等）で記述され、言語アダプタ経由で Signal・Computed・Effect 等のリアクティブプリミティブを提供する。Hayate コアは Hayabusa の存在を知らない。
 _Avoid_: Hayate の別名、エンジン、Rust 専用フレームワーク
 
 **Element Layer（要素層）**:
@@ -55,7 +55,7 @@ _Avoid_: フォールバック（劣化の含意を避けるため）、DOM Mode
 _Avoid_: :hover スタイル、状態付きスタイル、CSS 擬似クラス
 
 **Template DSL**:
-`.hbs` の `<template>` セクション内で使う言語非依存のマークアップ言語。タグ名は Hayate の `element-kind`（`view` / `text` / `image` / `button` / `text-input` / `scroll-view`）に直接マップされる。HTML タグ名（`div` / `p` / `h1` 等）は使用しない。式は `{}` で囲まれた制限付き DSL で記述し、特定プログラミング言語の構文に依存しない。
+`.hybs` の `<template>` セクション内で使う言語非依存のマークアップ言語。タグ名は Hayate の `element-kind`（`view` / `text` / `image` / `button` / `text-input` / `scroll-view`）に直接マップされる。HTML タグ名（`div` / `p` / `h1` 等）は使用しない。式は `{}` で囲まれた制限付き DSL で記述し、特定プログラミング言語の構文に依存しない。
 _Avoid_: HTML、JSX、テンプレートエンジン（Handlebars 等）
 
 **Script Adapter**:
