@@ -33,11 +33,15 @@ fn kind_from_u32(v: u32) -> Result<ElementKind, JsValue> {
 
 // ── Event kind constants (exposed to JS) ─────────────────────────────────
 
-#[wasm_bindgen] pub fn event_kind_click()  -> f64 { 0.0 }
-#[wasm_bindgen] pub fn event_kind_focus()  -> f64 { 1.0 }
-#[wasm_bindgen] pub fn event_kind_blur()   -> f64 { 2.0 }
-#[wasm_bindgen] pub fn event_kind_scroll() -> f64 { 7.0 }
-#[wasm_bindgen] pub fn event_kind_resize() -> f64 { 8.0 }
+#[wasm_bindgen] pub fn event_kind_click()               -> f64 { 0.0 }
+#[wasm_bindgen] pub fn event_kind_focus()               -> f64 { 1.0 }
+#[wasm_bindgen] pub fn event_kind_blur()                -> f64 { 2.0 }
+#[wasm_bindgen] pub fn event_kind_text_input()          -> f64 { 3.0 }
+#[wasm_bindgen] pub fn event_kind_composition_start()   -> f64 { 4.0 }
+#[wasm_bindgen] pub fn event_kind_composition_update()  -> f64 { 5.0 }
+#[wasm_bindgen] pub fn event_kind_composition_end()     -> f64 { 6.0 }
+#[wasm_bindgen] pub fn event_kind_scroll()              -> f64 { 7.0 }
+#[wasm_bindgen] pub fn event_kind_resize()              -> f64 { 8.0 }
 
 // ── Element kind discriminant getters (exposed to JS) ────────────────────
 
@@ -189,6 +193,43 @@ impl HayateElementRenderer {
         self.tree.element_set_scroll_offset(element_id_from_f64(id), x, y);
     }
 
+    /// Called by JS when the user types printable text into the focused TextInput.
+    pub fn on_text_input(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_append_text_content(eid, text);
+        self.tree.push_event(Event::TextInput { target: eid, text: text.to_string() });
+    }
+
+    /// Called by JS when an IME composition begins.
+    pub fn on_composition_start(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_set_preedit(eid, text);
+        self.tree.push_event(Event::CompositionStart { target: eid, text: text.to_string() });
+    }
+
+    /// Called by JS when the IME preedit updates.
+    pub fn on_composition_update(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_set_preedit(eid, text);
+        self.tree.push_event(Event::CompositionUpdate { target: eid, text: text.to_string() });
+    }
+
+    /// Called by JS when IME composition is finalized.
+    pub fn on_composition_end(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_set_preedit(eid, "");
+        self.tree.element_append_text_content(eid, text);
+        self.tree.push_event(Event::CompositionEnd { target: eid, text: text.to_string() });
+    }
+
+    pub fn element_set_text_content(&mut self, id: f64, text: &str) {
+        self.tree.element_set_text_content(element_id_from_f64(id), text);
+    }
+
+    pub fn element_get_text_content(&self, id: f64) -> String {
+        self.tree.element_get_text_content(element_id_from_f64(id))
+    }
+
     pub fn poll_events(&mut self) -> Box<[f64]> {
         let events = self.tree.poll_events();
         encode_events(&events)
@@ -301,7 +342,11 @@ impl HayateElementHtmlRenderer {
             let dom_el = match self.dom_nodes.get(&raw_id) {
                 Some(e) => e.clone(),
                 None => {
-                    let tag = if el.kind == ElementKind::Image { "img" } else { "div" };
+                    let tag = match el.kind {
+                        ElementKind::Image => "img",
+                        ElementKind::TextInput => "input",
+                        _ => "div",
+                    };
                     let new_el = doc.create_element(tag)?;
                     self.container.append_child(&new_el)?;
                     self.dom_nodes.insert(raw_id, new_el.clone());
@@ -367,8 +412,37 @@ impl HayateElementHtmlRenderer {
         self.tree.element_set_scroll_offset(element_id_from_f64(id), x, y);
     }
 
-    pub fn element_set_scroll_offset(&mut self, id: f64, x: f32, y: f32) {
-        self.tree.element_set_scroll_offset(element_id_from_f64(id), x, y);
+    pub fn on_text_input(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_append_text_content(eid, text);
+        self.tree.push_event(Event::TextInput { target: eid, text: text.to_string() });
+    }
+
+    pub fn on_composition_start(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_set_preedit(eid, text);
+        self.tree.push_event(Event::CompositionStart { target: eid, text: text.to_string() });
+    }
+
+    pub fn on_composition_update(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_set_preedit(eid, text);
+        self.tree.push_event(Event::CompositionUpdate { target: eid, text: text.to_string() });
+    }
+
+    pub fn on_composition_end(&mut self, id: f64, text: &str) {
+        let eid = element_id_from_f64(id);
+        self.tree.element_set_preedit(eid, "");
+        self.tree.element_append_text_content(eid, text);
+        self.tree.push_event(Event::CompositionEnd { target: eid, text: text.to_string() });
+    }
+
+    pub fn element_set_text_content(&mut self, id: f64, text: &str) {
+        self.tree.element_set_text_content(element_id_from_f64(id), text);
+    }
+
+    pub fn element_get_text_content(&self, id: f64) -> String {
+        self.tree.element_get_text_content(element_id_from_f64(id))
     }
 
     /// Fetch a PNG and attach it; HTML mode stores src_image for Canvas-compatible behaviour.
@@ -458,6 +532,30 @@ fn apply_resolved_to_dom(html_el: &HtmlElement, el: &ResolvedElement) -> Result<
         return Ok(());
     }
 
+    if el.kind == ElementKind::TextInput {
+        // Style the <input> to match the Hayate visual model (no browser defaults).
+        style.set_property("box-sizing", "border-box")?;
+        style.set_property("outline", "none")?;
+        style.set_property("padding", "0")?;
+        if el.border_width == 0.0 {
+            style.set_property("border", "none")?;
+        }
+        let arr = el.text_color.to_array_f32();
+        style.set_property("font-size", &format!("{}px", el.font_size))?;
+        style.set_property(
+            "color",
+            &format!(
+                "rgba({},{},{},{})",
+                (arr[0] * 255.0) as u8,
+                (arr[1] * 255.0) as u8,
+                (arr[2] * 255.0) as u8,
+                arr[3],
+            ),
+        )?;
+        // Don't overwrite value — the DOM input is source of truth in HTML mode.
+        return Ok(());
+    }
+
     if let Some(text) = &el.text {
         let arr = el.text_color.to_array_f32();
         style.set_property("font-size", &format!("{}px", el.font_size))?;
@@ -522,10 +620,23 @@ fn encode_events(events: &[Event]) -> Box<[f64]> {
                 out.push(*width as f64);
                 out.push(*height as f64);
             }
-            Event::TextInput { .. }
-            | Event::CompositionStart { .. }
-            | Event::CompositionUpdate { .. }
-            | Event::CompositionEnd { .. } => {}
+            // Text events: [tag, target_ffi] — JS retrieves the text via element_get_text_content.
+            Event::TextInput { target, .. } => {
+                out.push(3.0);
+                out.push(target.data().as_ffi() as f64);
+            }
+            Event::CompositionStart { target, .. } => {
+                out.push(4.0);
+                out.push(target.data().as_ffi() as f64);
+            }
+            Event::CompositionUpdate { target, .. } => {
+                out.push(5.0);
+                out.push(target.data().as_ffi() as f64);
+            }
+            Event::CompositionEnd { target, .. } => {
+                out.push(6.0);
+                out.push(target.data().as_ffi() as f64);
+            }
         }
     }
     out.into_boxed_slice()
@@ -541,9 +652,11 @@ async fn fetch_png(url: &str) -> Result<ImageData, JsValue> {
     let buf: ArrayBuffer = JsFuture::from(resp.array_buffer()?).await?.dyn_into()?;
     let bytes = Uint8Array::new(&buf).to_vec();
 
-    let decoder = png::Decoder::new(bytes.as_slice());
+    let decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     let mut reader = decoder.read_info().map_err(|e| JsValue::from_str(&e.to_string()))?;
-    let mut pixels = vec![0u8; reader.output_buffer_size()];
+    let buf_size = reader.output_buffer_size()
+        .ok_or_else(|| JsValue::from_str("PNG: unknown output buffer size"))?;
+    let mut pixels = vec![0u8; buf_size];
     let info = reader.next_frame(&mut pixels).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     // Convert to RGBA8 if needed.

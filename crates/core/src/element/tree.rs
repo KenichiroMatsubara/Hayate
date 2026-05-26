@@ -60,6 +60,10 @@ pub(crate) struct Element {
     pub scroll_offset: (f32, f32),
     /// Loaded image data for Image elements (populated by the adapter after async fetch).
     pub src_image: Option<Arc<ImageData>>,
+    /// Editable text value for TextInput elements.
+    pub text_content: String,
+    /// IME preedit (in-progress composition, not yet committed).
+    pub preedit: Option<String>,
 }
 
 /// Events emitted by input wiring and drained by `poll_events`.
@@ -95,6 +99,8 @@ pub struct ResolvedElement {
     pub z_index: i32,
     pub text: Option<String>,
     pub src: Option<String>,
+    /// Current value for TextInput elements (text_content + active preedit, combined for display).
+    pub text_content: Option<String>,
 }
 
 pub struct ElementTree {
@@ -169,6 +175,8 @@ impl ElementTree {
             transform: None,
             scroll_offset: (0.0, 0.0),
             src_image: None,
+            text_content: String::new(),
+            preedit: None,
         };
         let id = self.elements.insert(element);
 
@@ -206,6 +214,49 @@ impl ElementTree {
     pub fn element_set_image(&mut self, id: ElementId, image: Arc<ImageData>) {
         if let Some(el) = self.elements.get_mut(id) {
             el.src_image = Some(image);
+        }
+    }
+
+    /// Replace the editable text content of a TextInput element.
+    pub fn element_set_text_content(&mut self, id: ElementId, text: &str) {
+        if let Some(el) = self.elements.get_mut(id) {
+            el.text_content = text.to_string();
+            el.preedit = None;
+        }
+    }
+
+    /// Append text to a TextInput's committed content.
+    pub fn element_append_text_content(&mut self, id: ElementId, text: &str) {
+        if let Some(el) = self.elements.get_mut(id) {
+            el.text_content.push_str(text);
+        }
+    }
+
+    /// Set the IME preedit for a TextInput (in-progress, not yet committed).
+    pub fn element_set_preedit(&mut self, id: ElementId, preedit: &str) {
+        if let Some(el) = self.elements.get_mut(id) {
+            el.preedit = if preedit.is_empty() { None } else { Some(preedit.to_string()) };
+        }
+    }
+
+    /// Commit the current preedit text into text_content and clear the preedit.
+    pub fn element_commit_preedit(&mut self, id: ElementId) {
+        if let Some(el) = self.elements.get_mut(id) {
+            if let Some(preedit) = el.preedit.take() {
+                el.text_content.push_str(&preedit);
+            }
+        }
+    }
+
+    /// Return the combined display text (text_content + any active preedit) for a TextInput.
+    pub fn element_get_text_content(&self, id: ElementId) -> String {
+        let el = match self.elements.get(id) {
+            Some(e) => e,
+            None => return String::new(),
+        };
+        match &el.preedit {
+            Some(p) => format!("{}{}", el.text_content, p),
+            None => el.text_content.clone(),
         }
     }
 
@@ -506,6 +557,16 @@ fn walk_resolved(
     let x = ox + layout.location.x;
     let y = oy + layout.location.y;
 
+    let display_text_content = if el.kind == ElementKind::TextInput {
+        let combined = match &el.preedit {
+            Some(p) => format!("{}{}", el.text_content, p),
+            None => el.text_content.clone(),
+        };
+        Some(combined)
+    } else {
+        None
+    };
+
     out.push((
         id,
         ResolvedElement {
@@ -524,6 +585,7 @@ fn walk_resolved(
             z_index: el.visual.z_index,
             text: el.text.clone(),
             src: el.src.clone(),
+            text_content: display_text_content,
         },
     ));
 

@@ -412,3 +412,90 @@ fn remove_subtree_drops_children() {
     assert_eq!(tree.element_kind(a), None);
     assert_eq!(tree.element_kind(b), None);
 }
+
+// ── Phase 5: TextInput + IME tests ──────────────────────────────────────
+
+#[test]
+fn text_input_append_and_get() {
+    let mut tree = ElementTree::new();
+    let input = tree.element_create(ElementKind::TextInput);
+    tree.set_root(input);
+
+    tree.element_append_text_content(input, "hello");
+    assert_eq!(tree.element_get_text_content(input), "hello");
+
+    tree.element_append_text_content(input, " world");
+    assert_eq!(tree.element_get_text_content(input), "hello world");
+}
+
+#[test]
+fn text_input_set_replaces_content() {
+    let mut tree = ElementTree::new();
+    let input = tree.element_create(ElementKind::TextInput);
+    tree.set_root(input);
+
+    tree.element_append_text_content(input, "old");
+    tree.element_set_text_content(input, "new");
+    assert_eq!(tree.element_get_text_content(input), "new");
+}
+
+#[test]
+fn preedit_shown_inline_not_committed() {
+    let mut tree = ElementTree::new();
+    let input = tree.element_create(ElementKind::TextInput);
+    tree.set_root(input);
+
+    tree.element_append_text_content(input, "abc");
+    tree.element_set_preedit(input, "DEF");
+
+    // Display text includes preedit suffix.
+    assert_eq!(tree.element_get_text_content(input), "abcDEF");
+}
+
+#[test]
+fn commit_preedit_appends_and_clears() {
+    let mut tree = ElementTree::new();
+    let input = tree.element_create(ElementKind::TextInput);
+    tree.set_root(input);
+
+    tree.element_append_text_content(input, "abc");
+    tree.element_set_preedit(input, "DEF");
+    tree.element_commit_preedit(input);
+
+    // After commit, preedit is part of committed text.
+    assert_eq!(tree.element_get_text_content(input), "abcDEF");
+    // Setting preedit to empty effectively clears it.
+    tree.element_set_preedit(input, "");
+    assert_eq!(tree.element_get_text_content(input), "abcDEF");
+}
+
+#[test]
+fn text_input_event_queued_on_append() {
+    let mut tree = ElementTree::new();
+    let input = tree.element_create(ElementKind::TextInput);
+    tree.set_root(input);
+
+    tree.element_append_text_content(input, "x");
+    tree.push_event(Event::TextInput { target: input, text: "x".to_string() });
+
+    let events = tree.poll_events();
+    assert_eq!(events.len(), 1);
+    assert!(matches!(&events[0], Event::TextInput { text, .. } if text == "x"));
+}
+
+#[test]
+fn composition_lifecycle_events_queued() {
+    let mut tree = ElementTree::new();
+    let input = tree.element_create(ElementKind::TextInput);
+    tree.set_root(input);
+
+    tree.push_event(Event::CompositionStart { target: input, text: "あ".to_string() });
+    tree.push_event(Event::CompositionUpdate { target: input, text: "あい".to_string() });
+    tree.push_event(Event::CompositionEnd { target: input, text: "愛".to_string() });
+
+    let events = tree.poll_events();
+    assert_eq!(events.len(), 3);
+    assert!(matches!(&events[0], Event::CompositionStart { text, .. } if text == "あ"));
+    assert!(matches!(&events[1], Event::CompositionUpdate { text, .. } if text == "あい"));
+    assert!(matches!(&events[2], Event::CompositionEnd { text, .. } if text == "愛"));
+}
