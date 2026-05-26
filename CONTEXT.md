@@ -1,7 +1,7 @@
 # Hayate / Hayabusa
 
 **Hayate（疾風）** は、アプリケーション UI のための**命令型・保持型・GPU ネイティブな UI 基盤**である。
-**Hayabusa（隼）** は、Hayate の上で動く **Signal 型 Rust フレームワーク**である。
+**Hayabusa（隼）** は、Hayate の上で動く **Signal ベース SFC フレームワーク**である。
 
 Hayate は UI フレームワークではない。状態管理でもない。Reconciler でもない。Component tree でもない。
 
@@ -16,8 +16,8 @@ DOM 互換は設計目標に含まない。
 _Avoid_: フレームワーク、ライブラリ、レンダラー単体
 
 **Hayabusa（隼）**:
-Hayate の Element Layer 上に構築された Signal 型 Rust フレームワーク。`view!` マクロ・`#[component]`・Signal / Memo / Effect・Router・Store・Resource を提供する。Hayate の上を走る存在。
-_Avoid_: Hayate の別名、エンジン
+Hayate の Element Layer 上に構築された Signal ベースの SFC（Single-File Component）フレームワーク。`.hbs` ファイル形式を採用し、テンプレートとスタイルは言語非依存の Hayabusa DSL で記述する。スクリプト層はプロジェクト単位で選択された単一言語（TypeScript / Rust / Python 等）で記述され、言語アダプタ経由で Signal・Computed・Effect 等のリアクティブプリミティブを提供する。Hayate コアは Hayabusa の存在を知らない。
+_Avoid_: Hayate の別名、エンジン、Rust 専用フレームワーク
 
 **Element Layer（要素層）**:
 Hayate の上位 WIT インターフェース。element tree の作成・Hayate CSS スタイルの設定・ツリー組み立てを受け付け、内部でレイアウト計算（Taffy）とスタイル解決を行い Raw Layer に渡す。Hayabusa および他言語 SDK はこの層を使う。
