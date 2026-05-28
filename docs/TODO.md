@@ -65,6 +65,15 @@ Phase 1〜5 完了後の未実装項目。優先度順。
 - 毎フレーム呼ばれる可能性があるため、layout_cache が空のときは skip する guard が必要
 - `if self.tree.layout_cache.is_empty() { return; }` を各 on_pointer_* の先頭に追加
 
+### 11. `flush_remove` が子孫の `hovered_element` / `active_element` をクリアしない
+- **ファイル**: `crates/adapters/web/src/element_renderer.rs`
+  - Canvas Mode: `flush_pending` の `Command::Remove` 分岐（L498-507 付近）
+  - HTML Mode: `flush_remove`（L1190-1198 付近）
+- 削除対象の id 自身しか比較していない。`element_remove` はサブツリー全体を削除するので、子孫を hover/active 中の状態でその祖先を削除すると、`hovered_element` / `active_element` が dangling な `ElementId` を保持し続ける。
+- `focused_element` は `ElementTree::element_remove` 側で全子孫を walk して clear しているので問題なし。アダプタ側でも同じ走査が必要。
+- 影響: 次の `on_pointer_up` が存在しない要素に `ActiveEnd` を emit する、`on_pointer_move` の hover 遷移ロジックが過去フレームの dangling id と比較し続ける、など。
+- 検出: 現状のテストはネイティブ側 ElementTree のみで wasm アダプタを覆っていない。回帰テストは wasm-bindgen-test もしくは E2E が必要。
+
 ---
 
 ## 実装済みフェーズ（参考）
