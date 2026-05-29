@@ -58,6 +58,10 @@ _Avoid_: フレームワーク、React hooks ベース、Virtual DOM、Hayabusa 
 Tsubame Adapter の一つ。旧 Tsubame のコンポーネントモデル（`.tsx` / コンポーネント関数は一度だけ実行 / Virtual DOM なし / signal 変化が直接 mutation を発火）を引き継ぐ。SolidJS のモデルと実質同一であり、SolidJS の JSX transform・ライフサイクル（`onMount` / `onCleanup`）等を Tsubame signal の上に実装する。旧 Tsubame のコードは tsubame-solid へ移行できる。
 _Avoid_: 旧 Tsubame との別物扱い
 
+**tsubame-react**:
+Tsubame Adapter の一つ。JSX/TSX 形式。hooks 互換ではなく signal ファーストの API を提供する（`useSignal` / `useComputed` / `useEffect` 等）。React signal RFC（`useSignal` 提案）の流れに沿う。hooks の制約（条件分岐内で呼べない等）がなく、実装がシンプルになる。既存 React コードの書き換えは必要だが、「React の JSX 感覚で signal を書く」という明快なポジションを持つ。
+_Avoid_: useState/useEffect の hooks 互換シム
+
 **tsubame-vue**:
 Tsubame Adapter の一つ。`.vue` SFC（`<template>` / `<script>` / `<style>` の3セクション）形式を採用する。Vue の `ref`/`computed`/`watchEffect` 等は Tsubame の `createSignal`/`createMemo`/`createEffect` の薄いラッパーとして実装される。`<template>` は `@vue/compiler-dom` のコードジェネレータ部分を差し替えて Renderer Protocol 呼び出しに変換するコンパイラを使う。Vue のディレクティブ（`v-if` / `v-for` / `v-bind` 等）を完全互換で解析できる。`.vue` ファイル形式により Vue ユーザーおよび Svelte ユーザー（SFC 構文に親しみがある）が移行しやすい。
 _Avoid_: @vue/reactivity を内部で使う設計（Tsubame signal に統一するため）
