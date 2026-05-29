@@ -55,7 +55,7 @@ JS/TS 向けの pure JS **signal ランタイム基盤**。フレームワーク
 _Avoid_: フレームワーク、React hooks ベース、Virtual DOM、Hayabusa の JS アダプタ
 
 **Tsubame Adapter**:
-Tsubame の上に構築される上位フレームワーク。`tsubame-solid` / `tsubame-vue` / `tsubame-svelte` / `tsubame-react` の4つを指す。各 adapter は Tsubame の `IRenderer` を呼び出す記法層・コンポーネントモデル層であり、signal ランタイムは Tsubame を共有する。signal ロジック（`createSignal` 等）はランタイムに依存するだけなので adapter をまたいでコンポーネントロジックを共有できる。
+Tsubame の上に構築される上位フレームワーク。`tsubame-solid` / `tsubame-vue` / `tsubame-svelte` / `tsubame-react` の4つを指す。各 adapter は記法層・コンポーネントモデル層のみを担い、signal ランタイムは Tsubame を共有する。Vue の `ref`/`computed`・Svelte の `$state`/`$derived`・React の `useSignal` 等はすべて Tsubame の `createSignal`/`createEffect`/`createMemo` の薄いラッパーとして実装される。signal ロジックはランタイムに依存するだけなので、adapter をまたいでコンポーネントロジックを共有できる。エコシステムを単一 signal ランタイム上に統合することで、adapter ごとに独立した reactivity を持つ場合と比べて工数を削減しメリットを最大化する。
 _Avoid_: Solid-native, Vue-native（既存プロジェクト名との衝突を避けるため）, plugin, binding
 
 **Tsubame DOM Mode**:
