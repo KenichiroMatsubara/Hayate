@@ -51,8 +51,12 @@ _Avoid_: Runtime, Host, Surface Adapter
 _Avoid_: フォールバック（劣化の含意を避けるため）、DOM Mode、absolutely-positioned div 方式
 
 **Tsubame（燕）**:
-JS/TS 向けの pure JS **signal ランタイム基盤**。フレームワークではなくランタイムである。fine-grained Signal（`createSignal` / `createEffect` / `createMemo`）・スケジューラ・`IRenderer` プロトコルを提供する。Solid-native / Vue-native / Svelte-native / React-native はいずれも Tsubame の上に構築される上位フレームワークであり、Tsubame 自身は記法・コンポーネントモデルを持たない。Signal ロジック（`createSignal` 等）はランタイムに依存するだけなので、上位フレームワークをまたいでコンポーネントロジックを共有できる。DOM Mode と Canvas Mode の二つの動作モードを持つ。Hayabusa・Hayate コアのいずれも Tsubame の存在を知らない。
+JS/TS 向けの pure JS **signal ランタイム基盤**。フレームワークではなくランタイムである。fine-grained Signal（`createSignal` / `createEffect` / `createMemo`）・スケジューラ・Renderer Protocol（`IRenderer`）を提供する。tsubame-solid / tsubame-vue / tsubame-react はいずれも Tsubame の上に構築される Tsubame Adapter であり、Tsubame 自身は記法・コンポーネントモデルを持たない。Signal ロジックはランタイムに依存するだけなので、Adapter をまたいでコンポーネントロジックを共有できる。DOM Renderer と Canvas Renderer の二つの Renderer Protocol 実装を持つ。Hayabusa・Hayate コアのいずれも Tsubame の存在を知らない。
 _Avoid_: フレームワーク、React hooks ベース、Virtual DOM、Hayabusa の JS アダプタ
+
+**tsubame-solid**:
+Tsubame Adapter の一つ。旧 Tsubame のコンポーネントモデル（`.tsx` / コンポーネント関数は一度だけ実行 / Virtual DOM なし / signal 変化が直接 mutation を発火）を引き継ぐ。SolidJS のモデルと実質同一であり、SolidJS の JSX transform・ライフサイクル（`onMount` / `onCleanup`）等を Tsubame signal の上に実装する。旧 Tsubame のコードは tsubame-solid へ移行できる。
+_Avoid_: 旧 Tsubame との別物扱い
 
 **Tsubame Adapter**:
 Tsubame の上に構築される上位フレームワーク。`tsubame-solid` / `tsubame-vue` / `tsubame-react` の3つを指す（tsubame-svelte はスコープ外。Svelte ユーザーには tsubame-vue を推奨）。各 adapter は記法層・コンポーネントモデル層のみを担い、signal ランタイムは Tsubame を共有する。Vue の `ref`/`computed`・React の `useSignal` 等はすべて Tsubame の `createSignal`/`createEffect`/`createMemo` の薄いラッパーとして実装される。signal ロジックはランタイムに依存するだけなので、adapter をまたいでコンポーネントロジックを共有できる。
