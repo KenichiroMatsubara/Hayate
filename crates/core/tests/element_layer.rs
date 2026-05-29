@@ -832,3 +832,159 @@ fn paste_on_non_text_input_is_noop() {
     // No events, no panic.
     assert!(tree.poll_events().is_empty());
 }
+
+#[test]
+fn content_size_exceeds_clip_for_tall_content() {
+    let mut tree = ElementTree::new();
+    let scroll = tree.element_create(ElementKind::ScrollView);
+    let content = tree.element_create(ElementKind::View);
+    tree.set_root(scroll);
+    tree.set_viewport(300.0, 200.0);
+    tree.element_set_style(
+        scroll,
+        &[StyleProp::Width(Dimension::px(200.0)), StyleProp::Height(Dimension::px(100.0))],
+    );
+    tree.element_set_style(
+        content,
+        &[
+            StyleProp::Width(Dimension::px(200.0)),
+            StyleProp::Height(Dimension::px(500.0)),
+            StyleProp::BackgroundColor(Color::new(0.0, 1.0, 0.0, 1.0)),
+        ],
+    );
+    tree.element_append_child(scroll, content);
+    tree.render(0.0);
+
+    let (_, content_h) = tree.element_content_size(scroll);
+    assert!(
+        content_h > 100.0,
+        "content height {content_h} should exceed the 100px clip height"
+    );
+}
+
+// ── ADR-0013: Element Layer tree API ─────────────────────────────────────
+
+#[test]
+fn insert_before_reorders_children_in_flex_row() {
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::View);
+    let a = tree.element_create(ElementKind::View);
+    let b = tree.element_create(ElementKind::View);
+    let c = tree.element_create(ElementKind::View);
+    tree.set_root(root);
+    tree.set_viewport(400.0, 200.0);
+    tree.element_set_style(
+        root,
+        &[
+            StyleProp::Display(DisplayValue::Flex),
+            StyleProp::FlexDirection(FlexDirectionValue::Row),
+            StyleProp::AlignItems(AlignValue::FlexStart),
+            StyleProp::Width(Dimension::px(400.0)),
+            StyleProp::Height(Dimension::px(200.0)),
+        ],
+    );
+    for &child in &[a, b] {
+        tree.element_append_child(root, child);
+        tree.element_set_style(
+            child,
+            &[StyleProp::Width(Dimension::px(50.0)), StyleProp::Height(Dimension::px(50.0))],
+        );
+    }
+    // Insert c (red) before b — expected paint order: a, c, b.
+    tree.element_set_style(
+        c,
+        &[
+            StyleProp::Width(Dimension::px(50.0)),
+            StyleProp::Height(Dimension::px(50.0)),
+            StyleProp::BackgroundColor(Color::new(1.0, 0.0, 0.0, 1.0)),
+        ],
+    );
+    tree.element_insert_before(root, c, b);
+
+    let sg = tree.render(0.0);
+    // c is now at index 1, so its rect should sit at x=50.
+    let c_rect = tree.element_layout_rect(c).expect("c has no layout rect");
+    assert!((c_rect.0 - 50.0).abs() < 0.5, "c x = {} (expected 50)", c_rect.0);
+    // b is pushed to index 2, so its rect should sit at x=100.
+    let b_rect = tree.element_layout_rect(b).expect("b has no layout rect");
+    assert!((b_rect.0 - 100.0).abs() < 0.5, "b x = {} (expected 100)", b_rect.0);
+}
+
+// ── ADR-0013: WIT Dual Layer — resolved_elements for HTML Mode ───────────
+
+#[test]
+fn resolved_elements_returns_absolute_positions() {
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::View);
+    let child = tree.element_create(ElementKind::View);
+    tree.set_root(root);
+    tree.set_viewport(400.0, 300.0);
+    tree.element_set_style(
+        root,
+        &[
+            StyleProp::Width(Dimension::px(400.0)),
+            StyleProp::Height(Dimension::px(300.0)),
+            StyleProp::PaddingLeft(Dimension::px(10.0)),
+            StyleProp::PaddingTop(Dimension::px(20.0)),
+        ],
+    );
+    tree.element_set_style(
+        child,
+        &[StyleProp::Width(Dimension::px(50.0)), StyleProp::Height(Dimension::px(50.0))],
+    );
+    tree.element_append_child(root, child);
+
+    let resolved = tree.resolved_elements();
+    let re = resolved
+        .iter()
+        .find(|(id, _)| *id == child)
+        .map(|(_, r)| r)
+        .expect("child not in resolved_elements");
+
+    assert!((re.x - 10.0).abs() < 0.5, "child x = {}", re.x);
+    assert!((re.y - 20.0).abs() < 0.5, "child y = {}", re.y);
+    assert!((re.width - 50.0).abs() < 0.5);
+    assert!((re.height - 50.0).abs() < 0.5);
+}
+
+// ── ADR-0028: Canvas bundled fonts ───────────────────────────────────────
+
+#[test]
+fn default_font_family_constant_is_noto_sans() {
+    assert_eq!(hayate_core::element::text::DEFAULT_FONT_FAMILY, "Noto Sans");
+}
+
+// ── ADR-0022: scroll offset managed by upper layer ───────────────────────
+
+#[test]
+fn scroll_offset_readback_matches_set_value() {
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::ScrollView);
+    tree.set_root(root);
+
+    tree.element_set_scroll_offset(root, 30.0, 75.0);
+    let (x, y) = tree.element_get_scroll_offset(root);
+    assert!((x - 30.0).abs() < 1e-3, "scroll x = {x}");
+    assert!((y - 75.0).abs() < 1e-3, "scroll y = {y}");
+}
+
+#[test]
+fn unknown_font_family_falls_back_to_default() {
+    let mut tree = ElementTree::new();
+    let root = tree.element_create(ElementKind::View);
+    let text = tree.element_create(ElementKind::Text);
+    tree.set_root(root);
+    tree.set_viewport(400.0, 300.0);
+    tree.element_append_child(root, text);
+    tree.element_set_style(
+        root,
+        &[StyleProp::Width(Dimension::px(400.0)), StyleProp::Height(Dimension::px(300.0))],
+    );
+    tree.element_set_style(text, &[StyleProp::FontSize(24.0)]);
+    tree.element_set_font_family(text, "NonExistentFont-XYZ-12345");
+    tree.element_set_text(text, "hello");
+
+    let sg = tree.render(0.0);
+    let has_text_run = sg.iter().any(|(_, n)| matches!(&n.kind, NodeKind::TextRun { .. }));
+    assert!(has_text_run, "unknown font family must fall back to Noto Sans and produce a TextRun");
+}
