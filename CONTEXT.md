@@ -58,6 +58,10 @@ _Avoid_: フレームワーク、React hooks ベース、Virtual DOM、Hayabusa 
 Tsubame Adapter の一つ。旧 Tsubame のコンポーネントモデル（`.tsx` / コンポーネント関数は一度だけ実行 / Virtual DOM なし / signal 変化が直接 mutation を発火）を引き継ぐ。SolidJS のモデルと実質同一であり、SolidJS の JSX transform・ライフサイクル（`onMount` / `onCleanup`）等を Tsubame signal の上に実装する。旧 Tsubame のコードは tsubame-solid へ移行できる。
 _Avoid_: 旧 Tsubame との別物扱い
 
+**tsubame-vue**:
+Tsubame Adapter の一つ。`.vue` SFC（`<template>` / `<script>` / `<style>` の3セクション）形式を採用する。Vue の `ref`/`computed`/`watchEffect` 等は Tsubame の `createSignal`/`createMemo`/`createEffect` の薄いラッパーとして実装される。`<template>` は専用コンパイラが Renderer Protocol 呼び出しに変換する。`.vue` ファイル形式により Vue ユーザーおよび Svelte ユーザー（SFC 構文に親しみがある）が移行しやすい。
+_Avoid_: @vue/reactivity を内部で使う設計（Tsubame signal に統一するため）
+
 **Tsubame Adapter**:
 Tsubame の上に構築される上位フレームワーク。`tsubame-solid` / `tsubame-vue` / `tsubame-react` の3つを指す（tsubame-svelte はスコープ外。Svelte ユーザーには tsubame-vue を推奨）。各 adapter は記法層・コンポーネントモデル層のみを担い、signal ランタイムは Tsubame を共有する。Vue の `ref`/`computed`・React の `useSignal` 等はすべて Tsubame の `createSignal`/`createEffect`/`createMemo` の薄いラッパーとして実装される。signal ロジックはランタイムに依存するだけなので、adapter をまたいでコンポーネントロジックを共有できる。
 _Avoid_: Solid-native, Vue-native（既存プロジェクト名との衝突を避けるため）, tsubame-svelte, plugin, binding
