@@ -51,24 +51,24 @@ _Avoid_: Runtime, Host, Surface Adapter
 _Avoid_: フォールバック（劣化の含意を避けるため）、DOM Mode、absolutely-positioned div 方式
 
 **Tsubame（燕）**:
-JS/TS 向けの pure JS **signal ランタイム基盤**。フレームワークではなくランタイムである。fine-grained Signal（`createSignal` / `createEffect` / `createMemo`）・スケジューラ・Renderer Protocol（`IRenderer`）を提供する。tsubame-solid / tsubame-vue / tsubame-react はいずれも Tsubame の上に構築される Tsubame Adapter であり、Tsubame 自身は記法・コンポーネントモデルを持たない。Signal ロジックはランタイムに依存するだけなので、Adapter をまたいでコンポーネントロジックを共有できる。DOM Renderer と Canvas Renderer の二つの Renderer Protocol 実装を持つ。Hayabusa・Hayate コアのいずれも Tsubame の存在を知らない。
-_Avoid_: フレームワーク、React hooks ベース、Virtual DOM、Hayabusa の JS アダプタ
+JS/TS 向けの**レンダラーターゲット基盤**。フレームワークでも signal ランタイムでもなく、Renderer Protocol（`IRenderer`）・DOM Renderer・Canvas Renderer の3つを提供する層である。各 Tsubame Adapter は自身のフレームワーク固有のランタイム（SolidJS の signals / Vue の `@vue/reactivity` / React の Fiber）をそのまま持ち込み、レンダリング先を Tsubame の Renderer Protocol に向け替える。Tsubame は signal・コンポーネントモデル・スケジューラを持たない。Hayabusa・Hayate コアのいずれも Tsubame の存在を知らない。Hayate とは完全に独立した別リポジトリ（pure JS モノレポ）。
+_Avoid_: signal ランタイム、フレームワーク、React hooks ベース、Virtual DOM を持たない（adapter が持ち込む）
 
 **tsubame-solid**:
-Tsubame Adapter の一つ。旧 Tsubame のコンポーネントモデル（`.tsx` / コンポーネント関数は一度だけ実行 / Virtual DOM なし / signal 変化が直接 mutation を発火）を引き継ぐ。SolidJS のモデルと実質同一であり、SolidJS の JSX transform・ライフサイクル（`onMount` / `onCleanup`）等を Tsubame signal の上に実装する。旧 Tsubame のコードは tsubame-solid へ移行できる。
-_Avoid_: 旧 Tsubame との別物扱い
+Tsubame Adapter の一つ。SolidJS の `solid-js/universal` カスタムレンダラー API を使い、SolidJS のランタイム（fine-grained signals / `onMount` / `onCleanup` 等）をそのまま維持しつつレンダリング先を Tsubame の Renderer Protocol に向け替える。SolidJS のエコシステム（Solid Router・SolidQuery 等）がそのまま動く。`.tsx` 形式・コンポーネント関数は一度だけ実行・Virtual DOM なし。
+_Avoid_: Tsubame signal への依存（SolidJS 自身の signal を使う）
 
 **tsubame-react**:
-Tsubame Adapter の一つ。JSX/TSX 形式。hooks 互換ではなく signal ファーストの API を提供する（`useSignal` / `useComputed` / `useEffect` 等）。React signal RFC（`useSignal` 提案）の流れに沿う。hooks の制約（条件分岐内で呼べない等）がなく、実装がシンプルになる。既存 React コードの書き換えは必要だが、「React の JSX 感覚で signal を書く」という明快なポジションを持つ。
-_Avoid_: useState/useEffect の hooks 互換シム
+Tsubame Adapter の一つ。`react-reconciler` を使い、React の Fiber ランタイム（hooks・Suspense・Context 等）をそのまま維持しつつレンダリング先を Tsubame の Renderer Protocol に向け替える。TanStack Query・Zustand・Jotai 等の React エコシステムがそのまま動く。JSX/TSX 形式。既存の React コードを最小限の変更で Hayate（GPU Canvas）と DOM に対応させられる。
+_Avoid_: Tsubame signal への依存（React 自身の Fiber ランタイムを使う）、hooks 互換シム（React 本体を使うため不要）
 
 **tsubame-vue**:
-Tsubame Adapter の一つ。`.vue` SFC（`<template>` / `<script>` / `<style>` の3セクション）形式を採用する。Vue の `ref`/`computed`/`watchEffect` 等は Tsubame の `createSignal`/`createMemo`/`createEffect` の薄いラッパーとして実装される。`<template>` は `@vue/compiler-dom` のコードジェネレータ部分を差し替えて Renderer Protocol 呼び出しに変換するコンパイラを使う。Vue のディレクティブ（`v-if` / `v-for` / `v-bind` 等）を完全互換で解析できる。`.vue` ファイル形式により Vue ユーザーおよび Svelte ユーザー（SFC 構文に親しみがある）が移行しやすい。
-_Avoid_: @vue/reactivity を内部で使う設計（Tsubame signal に統一するため）
+Tsubame Adapter の一つ。`@vue/runtime-core` の `createRenderer()` API を使い、Vue のランタイム（`@vue/reactivity` の `ref`/`computed`/`watchEffect`・VDOM・コンポーネントライフサイクル）をそのまま維持しつつレンダリング先を Tsubame の Renderer Protocol に向け替える。Pinia・VueUse・VueRouter 等の Vue エコシステムがそのまま動く。`.vue` SFC 形式を採用し、`<template>` は `@vue/compiler-dom` のコードジェネレータ部分を差し替えて Renderer Protocol 呼び出しに変換する。`.vue` ファイル形式により Vue ユーザーおよび Svelte ユーザー（SFC 構文に親しみがある）が移行しやすい。
+_Avoid_: @vue/reactivity を Tsubame signal に置き換える設計（Vue エコシステムが全滅するため）
 
 **Tsubame Adapter**:
-Tsubame の上に構築される上位フレームワーク。`tsubame-solid` / `tsubame-vue` / `tsubame-react` の3つを指す（tsubame-svelte はスコープ外。Svelte ユーザーには tsubame-vue を推奨）。各 adapter は記法層・コンポーネントモデル層のみを担い、signal ランタイムは Tsubame を共有する。Vue の `ref`/`computed`・React の `useSignal` 等はすべて Tsubame の `createSignal`/`createEffect`/`createMemo` の薄いラッパーとして実装される。signal ロジックはランタイムに依存するだけなので、adapter をまたいでコンポーネントロジックを共有できる。Tsubame リポジトリ内のモノレポ（`packages/core` / `packages/solid` / `packages/vue` / `packages/react` / `packages/renderer-dom` / `packages/renderer-canvas`）として管理される。Hayate リポジトリとは完全に独立した別リポジトリであり、結合点は `apply_mutations` の仕様のみ。
-_Avoid_: Solid-native, Vue-native（既存プロジェクト名との衝突を避けるため）, tsubame-svelte, plugin, binding
+各フレームワークの既存ランタイムを Hayate（GPU Canvas）と DOM の両方にターゲットさせるブリッジ層。`tsubame-solid` / `tsubame-vue` / `tsubame-react` の3つを指す（tsubame-svelte はスコープ外。Svelte ユーザーには tsubame-vue を推奨）。各 adapter は自身のフレームワークのエコシステム（Pinia・TanStack Query 等の 3rd party ライブラリを含む）をそのまま維持し、レンダリング先を Tsubame の Renderer Protocol に向け替えるだけである。コンポーネントの UI ロジックは adapter をまたいで共有しない（記法が異なるため定義上不可能）。Tsubame リポジトリ内のモノレポ（`packages/renderer-protocol` / `packages/renderer-dom` / `packages/renderer-canvas` / `packages/solid` / `packages/vue` / `packages/react`）として管理される。Hayate リポジトリとは完全に独立した別リポジトリであり、結合点は `apply_mutations` の仕様のみ。
+_Avoid_: Solid-native, Vue-native（既存プロジェクト名との衝突を避けるため）, tsubame-svelte, signal共有（各adapterが独自ランタイムを持つため）
 
 **Renderer Protocol**:
 Tsubame と Tsubame Adapter の間の境界インターフェース。element の作成・ツリー操作・スタイル設定・イベント購読を抽象化した仕様。TypeScript では `interface IRenderer` として定義される。DOM Renderer と Canvas Renderer の二つの実装を持つ。Tsubame Adapter はこのプロトコルを通じてのみレンダリングを行い、DOM か Canvas かを意識しない。
