@@ -1024,21 +1024,25 @@ fn hit_test_walk(
 }
 
 fn apply_visual(visual: &mut Visual, prop: &StyleProp, text_dirty: &mut bool) {
-    match *prop {
-        StyleProp::BackgroundColor(c) => visual.background_color = Some(c),
+    match prop {
+        StyleProp::BackgroundColor(c) => visual.background_color = Some(*c),
         StyleProp::Opacity(v) => visual.opacity = v.clamp(0.0, 1.0),
         StyleProp::BorderRadius(v) => visual.border_radius = v.max(0.0),
         StyleProp::BorderWidth(v) => visual.border_width = v.max(0.0),
-        StyleProp::BorderColor(c) => visual.border_color = Some(c),
+        StyleProp::BorderColor(c) => visual.border_color = Some(*c),
         StyleProp::FontSize(v) => {
             visual.font_size = v.max(0.0);
             *text_dirty = true;
         }
-        StyleProp::Color(c) => {
-            visual.text_color = c;
+        StyleProp::FontFamily(f) => {
+            visual.font_family = if f.is_empty() { None } else { Some(f.clone()) };
             *text_dirty = true;
         }
-        StyleProp::ZIndex(z) => visual.z_index = z,
+        StyleProp::Color(c) => {
+            visual.text_color = *c;
+            *text_dirty = true;
+        }
+        StyleProp::ZIndex(z) => visual.z_index = *z,
         _ => {}
     }
 }

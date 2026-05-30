@@ -50,6 +50,13 @@ fn builtin_font_url(family: &str) -> Option<&'static str> {
         "Noto Sans Hebrew" => Some(
             "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanshebrew/NotoSansHebrew%5Bwdth%2Cwght%5D.ttf"
         ),
+        // ── Generic family targets (resolved from CSS keywords in text.rs) ─
+        "Noto Serif" => Some(
+            "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notoserif/NotoSerif%5Bwdth%2Cwght%5D.ttf"
+        ),
+        "Noto Sans Mono" => Some(
+            "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosansmono/NotoSansMono%5Bwdth%2Cwght%5D.ttf"
+        ),
         _ => None,
     }
 }
@@ -107,6 +114,7 @@ fn kind_from_u32(v: u32) -> Result<ElementKind, JsValue> {
 // ── Style tag constants (exposed to JS) ──────────────────────────────────
 
 #[wasm_bindgen] pub fn style_tag_z_index() -> u32 { crate::style_packet::TAG_Z_INDEX }
+#[wasm_bindgen] pub fn style_tag_font_family() -> u32 { crate::style_packet::TAG_FONT_FAMILY }
 
 // ── Event kind constants (exposed to JS) ─────────────────────────────────
 // Discriminants match `encode_events` below. Naming follows ADR-0031:
