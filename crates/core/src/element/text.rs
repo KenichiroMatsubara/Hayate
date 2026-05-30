@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use parley::{
@@ -23,6 +24,27 @@ pub struct TextLayout {
     pub text: Arc<str>,
     /// Width constraint last used; if None, single-line.
     pub width_constraint: Option<f32>,
+    /// Font family names with .notdef glyphs detected during shaping.
+    /// Each entry indicates a font that should be dynamically loaded.
+    pub missing_families: Vec<&'static str>,
+}
+
+/// Map a Unicode codepoint to the font family name best suited to render it,
+/// for use when .notdef is detected. Returns `None` for codepoints outside
+/// the known CJK-only table (the only scripts Hayate handles dynamically).
+fn codepoint_font_family(cp: u32) -> Option<&'static str> {
+    match cp {
+        0x3000..=0x303F   // CJK Symbols and Punctuation
+        | 0x3040..=0x309F // Hiragana
+        | 0x30A0..=0x30FF // Katakana
+        | 0x31F0..=0x31FF // Katakana Phonetic Extensions
+        | 0x3400..=0x4DBF // CJK Unified Ideographs Extension A
+        | 0x4E00..=0x9FFF // CJK Unified Ideographs
+        | 0xF900..=0xFAFF // CJK Compatibility Ideographs
+        | 0x20000..=0x2A6DF // CJK Unified Ideographs Extension B
+        => Some("Noto Sans JP"),
+        _ => None,
+    }
 }
 
 /// Build a Parley layout, break lines, and lower its glyph runs into
@@ -49,18 +71,25 @@ pub fn build_text_layout(
     let mut layout: Layout<TextBrush> = builder.build(text);
     layout.break_all_lines(max_advance);
 
-    let runs = lower_glyph_runs(&layout, font_size);
+    let (runs, missing_families) = lower_glyph_runs(&layout, font_size, text);
     TextLayout {
         layout,
         runs,
         font_size,
         text: Arc::<str>::from(text),
         width_constraint: max_advance,
+        missing_families,
     }
 }
 
-fn lower_glyph_runs(layout: &Layout<TextBrush>, font_size: f32) -> Vec<Arc<TextRunData>> {
+fn lower_glyph_runs(
+    layout: &Layout<TextBrush>,
+    font_size: f32,
+    text: &str,
+) -> (Vec<Arc<TextRunData>>, Vec<&'static str>) {
     let mut out: Vec<Arc<TextRunData>> = Vec::new();
+    let mut missing: HashSet<&'static str> = HashSet::new();
+
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(grun) = item else { continue };
@@ -79,6 +108,17 @@ fn lower_glyph_runs(layout: &Layout<TextBrush>, font_size: f32) -> Vec<Arc<TextR
             if positioned.is_empty() {
                 continue;
             }
+            if positioned.iter().any(|g| g.id == 0) {
+                let range = run.text_range();
+                let end = range.end.min(text.len());
+                if range.start < end {
+                    for ch in text[range.start..end].chars() {
+                        if let Some(fam) = codepoint_font_family(ch as u32) {
+                            missing.insert(fam);
+                        }
+                    }
+                }
+            }
             out.push(Arc::new(TextRunData {
                 font,
                 font_size: run.font_size().max(font_size),
@@ -87,5 +127,5 @@ fn lower_glyph_runs(layout: &Layout<TextBrush>, font_size: f32) -> Vec<Arc<TextR
             }));
         }
     }
-    out
+    (out, missing.into_iter().collect())
 }

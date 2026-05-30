@@ -82,6 +82,7 @@ fn kind_from_u32(v: u32) -> Result<ElementKind, JsValue> {
 #[wasm_bindgen] pub fn event_kind_key_down()            -> f64 { 12.0 }
 #[wasm_bindgen] pub fn event_kind_active_start()        -> f64 { 13.0 }
 #[wasm_bindgen] pub fn event_kind_pointer_move()        -> f64 { 14.0 }
+#[wasm_bindgen] pub fn event_kind_fetch_font()          -> f64 { 15.0 }
 
 // ── Modifier key bitmask constants (exposed to JS) ───────────────────────
 // Match KeyboardEvent.getModifierState flags for JS interop.
@@ -1473,6 +1474,7 @@ fn encode_events(events: &[Event]) -> js_sys::Array {
             }
             Event::ActiveStart { target } => { pf!(13.0); pf!(target.to_u64()); }
             Event::PointerMove { x, y }   => { pf!(14.0); pf!(*x); pf!(*y); }
+            Event::FetchFont { family }   => { pf!(15.0); ps!(family); }
         }
         result.push(&sub);
     }

@@ -1,4 +1,4 @@
-﻿use std::collections::HashMap;
+﻿use std::collections::{HashMap, HashSet};
 
 use parley::{FontContext, LayoutContext};
 use taffy::{AvailableSpace, NodeId as TaffyId, Size as TaffySize, Style as TaffyStyle, TaffyTree};
@@ -100,6 +100,9 @@ pub enum Event {
     ActiveEnd { target: ElementId },
     PointerMove { x: f32, y: f32 },
     KeyDown { target: ElementId, key: String, modifiers: u32 },
+    /// A font family with .notdef glyphs was detected during shaping.
+    /// The adapter should fetch the font and call `load_font_from_url`.
+    FetchFont { family: String },
 }
 
 /// Fully-resolved per-element state after layout, keyed by stable ElementId.
@@ -145,6 +148,12 @@ pub struct ElementTree {
     /// Wall-clock millis (host-provided) of the last cursor-visibility toggle.
     /// `None` until the first frame after focus; reset on focus change.
     pub(crate) last_cursor_toggle_ms: Option<f64>,
+    /// Set by `register_font`; cleared at the start of the next `compute_layout`.
+    /// Causes all text elements to be re-shaped with the newly registered font.
+    pub(crate) fonts_dirty: bool,
+    /// Family names already requested via `FetchFont` but not yet loaded.
+    /// Prevents duplicate events for the same family across frames.
+    pub(crate) pending_font_fetches: HashSet<String>,
 }
 
 fn init_bundled_fonts(font_cx: &mut FontContext) {
@@ -184,6 +193,8 @@ impl ElementTree {
             layout_cache: HashMap::new(),
             focused_element: None,
             last_cursor_toggle_ms: None,
+            fonts_dirty: false,
+            pending_font_fetches: HashSet::new(),
         }
     }
 
@@ -400,6 +411,9 @@ impl ElementTree {
             };
             self.font_cx.collection.register_fonts(fallback_blob, Some(fallback_override));
         }
+
+        self.pending_font_fetches.remove(family_name);
+        self.fonts_dirty = true;
     }
 
     /// Register a font from raw bytes using the family name(s) embedded in the
@@ -731,6 +745,25 @@ impl ElementTree {
     }
 
     fn compute_layout(&mut self, root: ElementId) {
+        // When a new font was registered, invalidate all text layouts so they
+        // are re-shaped with the new font data on this pass.
+        if self.fonts_dirty {
+            self.fonts_dirty = false;
+            let text_ids: Vec<ElementId> = self.elements.iter()
+                .filter_map(|(id, el)| {
+                    if el.kind.is_text_like() { Some(*id) } else { None }
+                })
+                .collect();
+            for id in text_ids {
+                if let Some(el) = self.elements.get_mut(&id) {
+                    el.text_layout = None;
+                    el.content_layout = None;
+                    let node = el.taffy_node;
+                    let _ = self.taffy.mark_dirty(node);
+                }
+            }
+        }
+
         let root_taffy = self.elements[&root].taffy_node;
         let available = TaffySize {
             width: AvailableSpace::Definite(self.viewport.0),
@@ -742,6 +775,8 @@ impl ElementTree {
             elements,
             font_cx,
             layout_cx,
+            event_queue,
+            pending_font_fetches,
             ..
         } = self;
 
@@ -799,6 +834,12 @@ impl ElementTree {
                     rd.text = src.clone();
                 }
             }
+            for &fam in &layout.missing_families {
+                if !pending_font_fetches.contains(fam) {
+                    pending_font_fetches.insert(fam.to_string());
+                    event_queue.push(Event::FetchFont { family: fam.to_string() });
+                }
+            }
             if let Some(el) = elements.get_mut(&eid) {
                 el.text_layout = Some(layout);
             }
@@ -848,6 +889,12 @@ impl ElementTree {
                 font_family.as_deref(),
             );
 
+            for &fam in &content_layout.missing_families {
+                if !pending_font_fetches.contains(fam) {
+                    pending_font_fetches.insert(fam.to_string());
+                    event_queue.push(Event::FetchFont { family: fam.to_string() });
+                }
+            }
             if let Some(el) = elements.get_mut(&eid) {
                 el.content_layout = Some(content_layout);
                 el.cursor_byte_index = el.text_content.len();
